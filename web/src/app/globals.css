@@ -229,3 +229,37 @@
     animation: none;
     mix-blend-mode: normal;
 }
+
+@media (max-width: 639px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  [data-slot="dialog-content"] {
+    width: calc(100vw - 1.5rem) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1.5rem) !important;
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+  }
+
+  [data-slot="dialog-footer"] > button,
+  [data-slot="dialog-footer"] > [data-slot="dialog-close"] {
+    width: 100%;
+  }
+
+  [data-slot="tabs-list"] {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  [data-slot="tabs-list"]::-webkit-scrollbar {
+    display: none;
+  }
+}

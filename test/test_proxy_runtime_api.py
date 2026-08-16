@@ -168,7 +168,7 @@ class ProxyRuntimeApiTests(unittest.TestCase):
         self.assertEqual(self.test_clearance_calls, ["https://chatgpt.com/backend-api/models"])
 
     def test_health_json_includes_proxy_runtime_status(self) -> None:
-        response = self.client.get("/health?format=json")
+        response = self.client.get("/health/dashboard?format=json")
 
         self.assertEqual(response.status_code, 200, response.text)
         payload = response.json()

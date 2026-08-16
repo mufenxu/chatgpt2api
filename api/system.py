@@ -302,7 +302,7 @@ def create_router(app_version: str) -> APIRouter:
         require_admin(authorization)
         return await run_in_threadpool(delete_to_target, target_free_mb, dry_run)
 
-    @router.get("/health", response_model=None)
+    @router.get("/health/dashboard", response_model=None)
     async def health_dashboard(format: str = Query(default="html")):
         from services.account_service import account_service as acct_svc
         stats = acct_svc.get_stats()
@@ -368,7 +368,7 @@ td{{padding:8px 12px;border-top:1px solid #2a2d3a;font-size:14px}}tr:hover td{{b
 <tr><th>类型</th><th>数量</th></tr>
 {''.join(f'<tr><td>{t}</td><td>{c}</td></tr>' for t,c in sorted(stats['by_type'].items()))}
 </table>
-<div class="refresh">JSON: <span class="api-url">/health?format=json</span></div>
+<div class="refresh">JSON: <span class="api-url">/health/dashboard?format=json</span></div>
 </div></body></html>""")
 
     return router

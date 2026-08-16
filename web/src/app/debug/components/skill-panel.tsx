@@ -143,17 +143,17 @@ ${skillEn}
     <section className="grid items-stretch gap-4 lg:grid-cols-2">
       {versions.map((item) => (
         <div key={item.title} className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+          <div className="flex flex-col gap-3 border-b border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-medium text-slate-900 dark:text-slate-100">{item.title}</h2>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{item.desc}</p>
             </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="cursor-pointer" onClick={() => downloadSkill(item.skill)}>
+            <div className="flex gap-2 sm:shrink-0">
+              <Button size="sm" variant="outline" className="min-w-0 flex-1 cursor-pointer sm:flex-none" onClick={() => downloadSkill(item.skill)}>
                 <Download />
                 下载
               </Button>
-              <Button size="sm" className="cursor-pointer" onClick={() => void copyText(item.prompt)}>
+              <Button size="sm" className="min-w-0 flex-1 cursor-pointer sm:flex-none" onClick={() => void copyText(item.prompt)}>
                 <Copy />
                 复制
               </Button>

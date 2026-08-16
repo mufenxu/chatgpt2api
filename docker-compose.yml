@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
-    command: ["uv", "run", "--frozen", "--no-dev", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--access-log"]
+    command: ["uv", "run", "--frozen", "--no-dev", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--no-access-log"]
     volumes:
       - ./data:/app/data
       - ./config.json:/app/config.json
@@ -28,3 +28,10 @@ services:
       
       # 基础 URL (可选)
       # - CHATGPT2API_BASE_URL=https://your-domain.com
+
+      # MY OIDC 统一登录（可选；启用时五项都必须设置）
+      - MY_ISSUER=${MY_ISSUER:-}
+      - MY_CLIENT_ID=${MY_CLIENT_ID:-}
+      - MY_CLIENT_SECRET=${MY_CLIENT_SECRET:-}
+      - MY_REDIRECT_URI=${MY_REDIRECT_URI:-}
+      - SESSION_SECRET=${SESSION_SECRET:-}

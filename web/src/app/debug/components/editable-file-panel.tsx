@@ -272,8 +272,8 @@ export function EditableFilePanel({ title, kind, endpoint, defaultPrompt, imageR
 
   return (
     <>
-    <div className="grid h-full min-h-[calc(100vh-148px)] overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm dark:border-white/10 dark:bg-stone-950 lg:grid-cols-[288px_420px_minmax(0,1fr)]">
-      <aside className="flex min-h-0 flex-col border-b border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[0.02] lg:border-r lg:border-b-0">
+    <div className="grid min-h-0 overflow-visible rounded-lg border border-stone-200 bg-white shadow-sm dark:border-white/10 dark:bg-stone-950 lg:h-full lg:min-h-[calc(100vh-148px)] lg:overflow-hidden lg:grid-cols-[288px_420px_minmax(0,1fr)]">
+      <aside className="flex min-h-[280px] flex-col border-b border-stone-200 bg-stone-50/70 dark:border-white/10 dark:bg-white/[0.02] lg:min-h-0 lg:border-r lg:border-b-0">
         <div className="flex h-14 items-center justify-between border-b border-stone-200 px-4 dark:border-white/10">
           <div className="flex items-center gap-2 text-sm font-semibold text-stone-950 dark:text-stone-50">
             <History className="size-4" />
@@ -342,7 +342,7 @@ export function EditableFilePanel({ title, kind, endpoint, defaultPrompt, imageR
         </div>
       </aside>
 
-      <section className="flex min-h-0 flex-col border-b border-stone-200 dark:border-white/10 lg:border-r lg:border-b-0">
+      <section className="flex min-h-[460px] flex-col border-b border-stone-200 dark:border-white/10 lg:min-h-0 lg:border-r lg:border-b-0">
         <div className="flex h-14 items-center justify-between border-b border-stone-200 px-5 dark:border-white/10">
           <h2 className="text-sm font-semibold text-stone-950 dark:text-stone-50">{title}</h2>
           <Button size="sm" onClick={() => void submit()} disabled={submitting || running}>
@@ -383,7 +383,7 @@ export function EditableFilePanel({ title, kind, endpoint, defaultPrompt, imageR
         </div>
       </section>
 
-      <section className="flex min-h-0 flex-col">
+      <section className="flex min-h-[360px] flex-col lg:min-h-0">
         <div className="flex h-14 items-center justify-between border-b border-stone-200 px-5 dark:border-white/10">
           <h2 className="text-sm font-semibold text-stone-950 dark:text-stone-50">生成状态</h2>
           {selectedTask ? <span className={cn("rounded-full border px-2.5 py-1 text-xs", statusClass(selectedTask.status))}>{statusText(selectedTask.status)}</span> : null}

@@ -129,8 +129,8 @@ export function ChatPanel() {
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
-      <section className="flex min-h-0 flex-col lg:border-r lg:border-stone-200/70 lg:pr-8 dark:lg:border-white/10">
+    <div className="grid min-h-[calc(100dvh-8rem)] gap-6 lg:h-full lg:min-h-0 lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-8">
+      <section className="flex min-h-[560px] flex-col lg:min-h-0 lg:border-r lg:border-stone-200/70 lg:pr-8 dark:lg:border-white/10">
         <div className="border-b border-stone-200/70 pb-3 dark:border-white/10">
           <h2 className="text-sm font-medium text-stone-500 dark:text-stone-400">请求</h2>
         </div>
@@ -197,7 +197,7 @@ export function ChatPanel() {
           <Textarea value={raw ? pretty(raw) : "{\n  \"messages\": []\n}"} readOnly className="min-h-72 resize-none rounded-md border-stone-200/70 bg-stone-50/50 p-4 font-mono text-xs leading-5 text-stone-600 shadow-none dark:border-white/10 dark:bg-white/[0.03] dark:text-stone-300" />
         </div>
       </section>
-      <section className="flex min-h-0 flex-col">
+      <section className="flex min-h-[360px] flex-col lg:min-h-0">
         <div className="border-b border-stone-200/70 pb-3 dark:border-white/10">
           <h2 className="text-sm font-medium text-stone-500 dark:text-stone-400">对话</h2>
         </div>

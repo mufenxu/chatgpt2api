@@ -331,15 +331,23 @@ export type UserQuota = {
   quota_updated_at: string | null;
 };
 
-export async function login(authKey: string) {
+export async function login(authKey = "") {
   const normalizedAuthKey = String(authKey || "").trim();
   return httpRequest<LoginResponse>("/auth/login", {
     method: "POST",
     body: {},
-    headers: {
-      Authorization: `Bearer ${normalizedAuthKey}`,
-    },
+    headers: normalizedAuthKey ? { Authorization: `Bearer ${normalizedAuthKey}` } : {},
     redirectOnUnauthorized: false,
+    skipStoredAuth: true,
+  });
+}
+
+export async function logoutLocalSession() {
+  return httpRequest<{ ok: boolean }>("/auth/logout", {
+    method: "POST",
+    body: {},
+    redirectOnUnauthorized: false,
+    skipStoredAuth: true,
   });
 }
 

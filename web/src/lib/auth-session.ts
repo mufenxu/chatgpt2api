@@ -5,14 +5,30 @@ import { clearStoredAuthSession, getStoredAuthSession, setStoredAuthSession, typ
 
 export async function getValidatedAuthSession(): Promise<StoredAuthSession | null> {
   const storedSession = await getStoredAuthSession();
-  if (!storedSession) {
-    return null;
+
+  try {
+    const data = await login();
+    const nextSession: StoredAuthSession = {
+      key: "",
+      authType: "my",
+      role: data.role,
+      subjectId: data.subject_id,
+      name: data.name,
+    };
+    await setStoredAuthSession(nextSession);
+    return nextSession;
+  } catch {
+    if (!storedSession || storedSession.authType !== "key") {
+      await clearStoredAuthSession();
+      return null;
+    }
   }
 
   try {
     const data = await login(storedSession.key);
     const nextSession: StoredAuthSession = {
       key: storedSession.key,
+      authType: "key",
       role: data.role,
       subjectId: data.subject_id,
       name: data.name,

@@ -79,7 +79,7 @@ function SettingsPageContent() {
     <>
       <SettingsDataController />
       <SettingsHeader />
-      <Tabs defaultValue="basic" className="space-y-4">
+      <Tabs defaultValue="basic" className="min-w-0 space-y-4">
         <div className="sticky top-3 z-20 overflow-x-auto rounded-xl border border-white/80 bg-white/90 px-3 py-2 shadow-sm backdrop-blur">
           <TabsList variant="line" className="min-w-max justify-start">
             {settingsTabs.map((tab) => (

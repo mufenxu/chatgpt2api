@@ -113,8 +113,11 @@ ghcr.io/mufenxu/chatgpt2api:latest
 复制环境变量模板：
 
 ```bash
+cp config.example.json config.json
 cp .env.example .env
 ```
+
+`config.json` 是必需的；`.env` 可以省略，因为 Compose 为代理参数提供了默认值，但建议复制后按需修改端口、代理和 FlareSolverr 配置。
 
 至少修改 `.env` 中的：
 

@@ -13,6 +13,11 @@ services:
     environment:
       STORAGE_BACKEND: sqlite
       DATABASE_URL: sqlite:////app/data/accounts.db
+      MY_ISSUER: ${MY_ISSUER:-}
+      MY_CLIENT_ID: ${MY_CLIENT_ID:-}
+      MY_CLIENT_SECRET: ${MY_CLIENT_SECRET:-}
+      MY_REDIRECT_URI: ${MY_REDIRECT_URI:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
     # 存储后端配置 (可选值: json, sqlite, postgres, git)
     # environment:
     #   STORAGE_BACKEND: json

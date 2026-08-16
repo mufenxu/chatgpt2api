@@ -6,6 +6,7 @@ export type AuthRole = "admin" | "user";
 
 export type StoredAuthSession = {
   key: string;
+  authType: "key" | "my";
   role: AuthRole;
   subjectId: string;
   name: string;
@@ -26,13 +27,15 @@ function normalizeSession(value: unknown, fallbackKey = ""): StoredAuthSession |
 
   const candidate = value as Partial<StoredAuthSession>;
   const key = String(candidate.key || fallbackKey || "").trim();
+  const authType = candidate.authType === "my" ? "my" : "key";
   const role = candidate.role === "admin" || candidate.role === "user" ? candidate.role : null;
-  if (!key || !role) {
+  if ((authType === "key" && !key) || !role) {
     return null;
   }
 
   return {
     key,
+    authType,
     role,
     subjectId: String(candidate.subjectId || "").trim(),
     name: String(candidate.name || "").trim(),

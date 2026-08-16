@@ -2,16 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LoaderCircle, LockKeyhole } from "lucide-react";
+import { LoaderCircle, LockKeyhole, LogIn } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { HeaderActions } from "@/components/header-actions";
+import webConfig from "@/constants/common-env";
 import { login } from "@/lib/api";
 import { useRedirectIfAuthenticated } from "@/lib/use-auth-guard";
-import { getDefaultRouteForRole, setStoredAuthSession } from "@/store/auth";
+import { clearStoredAuthSession, getDefaultRouteForRole, setStoredAuthSession } from "@/store/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function LoginPage() {
       const data = await login(normalizedAuthKey);
       await setStoredAuthSession({
         key: normalizedAuthKey,
+        authType: "key",
         role: data.role,
         subjectId: data.subject_id,
         name: data.name,
@@ -42,6 +44,12 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleMyLogin = async () => {
+    await clearStoredAuthSession();
+    const apiBase = webConfig.apiUrl.replace(/\/$/, "");
+    window.location.assign(`${apiBase}/auth/my/start?returnTo=%2Faccounts`);
   };
 
   if (isCheckingAuth) {
@@ -65,6 +73,20 @@ export default function LoginPage() {
               <h1 className="text-3xl font-semibold tracking-tight text-stone-950">欢迎回来</h1>
               <p className="text-sm leading-6 text-stone-500">输入密钥后继续使用账号管理和图片生成功能。</p>
             </div>
+          </div>
+
+          <Button
+            className="h-13 w-full rounded-2xl bg-stone-950 text-white hover:bg-stone-800"
+            onClick={() => void handleMyLogin()}
+          >
+            <LogIn className="size-4" />
+            使用 MY 统一登录
+          </Button>
+
+          <div className="flex items-center gap-3 text-xs text-stone-400">
+            <span className="h-px flex-1 bg-stone-200" />
+            <span>或使用原有密钥</span>
+            <span className="h-px flex-1 bg-stone-200" />
           </div>
 
           <div className="space-y-3">
@@ -92,7 +114,7 @@ export default function LoginPage() {
             disabled={isSubmitting}
           >
             {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            登录
+            密钥登录
           </Button>
         </CardContent>
       </Card>

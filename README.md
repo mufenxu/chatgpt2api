@@ -60,9 +60,12 @@ docker compose up -d
 如果图片链路经常遇到 Cloudflare 拦截，可以启用附带的 WARP + Privoxy + FlareSolverr 方案：
 
 ```bash
+cp config.example.json config.json
 cp .env.example .env
 docker compose -f docker-compose.warp.yml up -d --build
 ```
+
+WARP 部署必须准备 `config.json`；`.env` 是可选的环境变量文件，复制后可以修改端口、代理和 FlareSolverr 参数。
 
 该 compose 会启动：
 
