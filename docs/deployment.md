@@ -30,23 +30,39 @@ git --version
 
 ## 方式一：普通 Docker 部署
 
-适合不需要 WARP / FlareSolverr 清障的场景。
+适合不需要 WARP / FlareSolverr 清障的场景。正式部署使用 GitHub Container Registry 的预构建镜像：
+
+```text
+ghcr.io/mufenxu/chatgpt2api:latest
+```
+
+镜像支持 `linux/amd64` 和 `linux/arm64`。仓库每次推送代码后，GitHub Actions 会自动构建并更新 `latest` 标签。
+
+如果 GHCR 包设置为私有，首次拉取前登录：
+
+```bash
+docker login ghcr.io -u mufenxu
+```
+
+登录时使用具有 `read:packages` 权限的 GitHub Personal Access Token；公开 GHCR 包不需要登录。
 
 ```bash
 git clone git@github.com:mufenxu/chatgpt2api.git
 cd chatgpt2api
+cp config.example.json config.json
 ```
 
-设置 `config.json` 中的 `auth-key`，或在 `docker-compose.yml` 中配置：
+修改 `config.json` 中的 `auth-key`，或在 `docker-compose.yml` 中配置：
 
 ```yaml
 environment:
   - CHATGPT2API_AUTH_KEY=your_secret_key
 ```
 
-启动：
+首次启动和后续更新：
 
 ```bash
+docker compose pull
 docker compose up -d
 ```
 
@@ -73,6 +89,16 @@ docker logs -f chatgpt2api
 ```bash
 docker compose down
 ```
+
+### GitHub Actions 镜像构建
+
+镜像构建工作流位于 `.github/workflows/docker-publish.yml`，会在代码每次推送到 GitHub 时运行，也可以在 GitHub Actions 页面手动运行。所有构建结果统一推送到：
+
+```text
+ghcr.io/mufenxu/chatgpt2api:latest
+```
+
+工作流使用 Docker Buildx 构建 `linux/amd64` 和 `linux/arm64` 两个平台。服务器执行 `docker compose pull` 后即可获取最近一次推送对应的镜像。
 
 ## 方式二：WARP / FlareSolverr 部署
 

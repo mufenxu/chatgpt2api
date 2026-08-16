@@ -36,10 +36,20 @@
 ```bash
 git clone git@github.com:mufenxu/chatgpt2api.git
 cd chatgpt2api
+cp config.example.json config.json
 docker compose up -d
 ```
 
-启动前请先在 `config.json` 中设置 `auth-key`，也可以在 `docker-compose.yml` 中通过 `CHATGPT2API_AUTH_KEY` 覆盖。
+启动前请先在 `config.json` 中把 `auth-key` 改成自己的管理员密钥，也可以在 `docker-compose.yml` 中通过 `CHATGPT2API_AUTH_KEY` 覆盖。
+
+默认镜像地址：`ghcr.io/mufenxu/chatgpt2api:latest`。每次推送代码到 GitHub 后，GitHub Actions 会自动重新构建并覆盖这个 `latest` 标签。
+
+首次启动和后续更新：
+
+```bash
+docker compose pull
+docker compose up -d
+```
 
 - Web 面板：`http://localhost:3000`
 - API 地址：`http://localhost:3000/v1`
@@ -88,10 +98,8 @@ bun run dev
 后续更新新版本：
 
 ```bash
-docker pull ghcr.io/mufenxu/chatgpt2api:latest
-docker-compose down
-docker-compose up -d
-
+docker compose pull
+docker compose up -d
 ```
 
 ### 存储后端配置
