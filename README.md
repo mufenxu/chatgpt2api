@@ -42,6 +42,13 @@ cat > /opt/chatgpt2api/config.json <<'JSON'
   "auth-key": "replace-with-your-admin-key"
 }
 JSON
+cat > /opt/chatgpt2api/.env <<'ENV'
+MY_ISSUER=https://your-oidc-provider.example.com
+MY_CLIENT_ID=replace-with-your-client-id
+MY_CLIENT_SECRET=replace-with-your-client-secret
+MY_REDIRECT_URI=https://your-domain.com/auth/my/callback
+SESSION_SECRET=replace-with-at-least-32-random-characters
+ENV
 ```
 
 拉取并启动：
@@ -51,7 +58,8 @@ docker pull ghcr.io/mufenxu/chatgpt2api:latest
 docker run -d \
   --name chatgpt2api \
   --restart unless-stopped \
-  -p 3000:80 \
+  -p 6066:80 \
+  --env-file /opt/chatgpt2api/.env \
   -v /opt/chatgpt2api/data:/app/data \
   -v /opt/chatgpt2api/config.json:/app/config.json \
   -e STORAGE_BACKEND=json \
@@ -68,11 +76,11 @@ docker rm -f chatgpt2api
 # 再次执行上面的 docker run 命令
 ```
 
-启用统一登录时，在 `docker run` 中追加 `--env-file /opt/chatgpt2api/.env`。普通部署不需要 `.env`。
+默认部署启用统一登录，因此 `.env` 中的五个 OIDC 参数必须填写。`MY_REDIRECT_URI` 必须与统一登录服务中登记的回调地址完全一致。
 
-- Web 面板：`http://localhost:3000`
-- API 地址：`http://localhost:3000/v1`
-- 数据目录：`./data`
+- Web 面板：`http://localhost:6066`
+- API 地址：`http://localhost:6066/v1`
+- 数据目录：`/opt/chatgpt2api/data`
 
 ### WARP / FlareSolverr 稳定代理部署
 
@@ -84,7 +92,7 @@ cp .env.example .env
 docker compose -f docker-compose.warp.yml up -d --build
 ```
 
-WARP 部署必须准备 `config.json`；`.env` 是可选的环境变量文件，复制后可以修改端口、代理和 FlareSolverr 参数。
+WARP 部署必须准备 `config.json` 和 `.env`；除了统一登录参数，也可以在 `.env` 中修改端口、代理和 FlareSolverr 参数。
 
 该 compose 会启动：
 
@@ -115,13 +123,6 @@ uv run main.py
 cd chatgpt2api/web
 bun install
 bun run dev
-```
-
-后续更新新版本：
-
-```bash
-docker compose pull
-docker compose up -d
 ```
 
 ### 存储后端配置
@@ -216,7 +217,7 @@ Authorization: Bearer <auth-key>
 返回当前暴露的图片模型列表。
 
 ```bash
-curl http://localhost:8000/v1/models \
+curl http://localhost:6066/v1/models \
   -H "Authorization: Bearer <auth-key>"
 ```
 
@@ -240,7 +241,7 @@ curl http://localhost:8000/v1/models \
 OpenAI 兼容图片生成接口，用于文生图。
 
 ```bash
-curl http://localhost:8000/v1/images/generations \
+curl http://localhost:6066/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <auth-key>" \
   -d '{
@@ -273,7 +274,7 @@ curl http://localhost:8000/v1/images/generations \
 OpenAI 兼容图片编辑接口，可上传图片文件，也可按官方 JSON 格式传入图片链接并生成编辑结果。
 
 ```bash
-curl http://localhost:8000/v1/images/edits \
+curl http://localhost:6066/v1/images/edits \
   -H "Authorization: Bearer <auth-key>" \
   -F "model=gpt-image-2" \
   -F "prompt=把这张图改成赛博朋克夜景风格" \
@@ -284,7 +285,7 @@ curl http://localhost:8000/v1/images/edits \
 也可以直接传图片 URL：
 
 ```bash
-curl http://localhost:8000/v1/images/edits \
+curl http://localhost:6066/v1/images/edits \
   -H "Authorization: Bearer <auth-key>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -320,7 +321,7 @@ curl http://localhost:8000/v1/images/edits \
 面向文本、网页搜索与图片场景的 Chat Completions 兼容接口，不是完整通用聊天代理。
 
 ```bash
-curl http://localhost:8000/v1/chat/completions \
+curl http://localhost:6066/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <auth-key>" \
   -d '{
@@ -359,7 +360,7 @@ curl http://localhost:8000/v1/chat/completions \
 面向文本、网页搜索和图片生成工具调用的 Responses API 兼容接口，不是完整通用 Responses API 代理。
 
 ```bash
-curl http://localhost:8000/v1/responses \
+curl http://localhost:6066/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <auth-key>" \
   -d '{

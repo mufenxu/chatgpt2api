@@ -97,7 +97,9 @@ services:
       flaresolverr:
         condition: service_started
     ports:
-      - "${CHATGPT2API_PORT:-3000}:80"
+      - "${CHATGPT2API_PORT:-6066}:80"
+    env_file:
+      - .env
     volumes:
       - ./data:/app/data
       - ./config.json:/app/config.json

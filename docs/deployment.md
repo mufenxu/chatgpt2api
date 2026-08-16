@@ -4,18 +4,14 @@
 
 ## 部署前准备
 
-服务器需要安装：
+直接拉取镜像部署时，服务器只需要安装 Docker：
 
 - Docker
-- Docker Compose v2
-- Git
 
-首次部署前建议确认：
+WARP / FlareSolverr 部署额外需要 Docker Compose v2；源码运行才需要 Git。首次部署前建议确认：
 
 ```bash
 docker version
-docker compose version
-git --version
 ```
 
 项目核心持久化文件：
@@ -55,6 +51,13 @@ cat > /opt/chatgpt2api/config.json <<'JSON'
   "auth-key": "replace-with-your-admin-key"
 }
 JSON
+cat > /opt/chatgpt2api/.env <<'ENV'
+MY_ISSUER=https://your-oidc-provider.example.com
+MY_CLIENT_ID=replace-with-your-client-id
+MY_CLIENT_SECRET=replace-with-your-client-secret
+MY_REDIRECT_URI=https://your-domain.com/auth/my/callback
+SESSION_SECRET=replace-with-at-least-32-random-characters
+ENV
 ```
 
 首次启动：
@@ -64,7 +67,8 @@ docker pull ghcr.io/mufenxu/chatgpt2api:latest
 docker run -d \
   --name chatgpt2api \
   --restart unless-stopped \
-  -p 3000:80 \
+  -p 6066:80 \
+  --env-file /opt/chatgpt2api/.env \
   -v /opt/chatgpt2api/data:/app/data \
   -v /opt/chatgpt2api/config.json:/app/config.json \
   -e STORAGE_BACKEND=json \
@@ -76,13 +80,13 @@ docker run -d \
 访问：
 
 ```text
-http://localhost:3000
+http://localhost:6066
 ```
 
 API 基础地址：
 
 ```text
-http://localhost:3000/v1
+http://localhost:6066/v1
 ```
 
 查看日志：
@@ -105,7 +109,7 @@ docker rm -f chatgpt2api
 # 再次执行上面的 docker run 命令
 ```
 
-启用统一登录时，在 `docker run` 中追加 `--env-file /opt/chatgpt2api/.env`；普通部署不需要 `.env`。如果 GHCR 包设置为私有，先执行 `docker login ghcr.io -u mufenxu`。
+默认部署启用统一登录，因此必须通过 `--env-file /opt/chatgpt2api/.env` 传入五个 OIDC 参数。`MY_REDIRECT_URI` 必须与统一登录服务中登记的回调地址完全一致。如果 GHCR 包设置为私有，先执行 `docker login ghcr.io -u mufenxu`。
 
 ### GitHub Actions 镜像构建
 
@@ -115,7 +119,7 @@ docker rm -f chatgpt2api
 ghcr.io/mufenxu/chatgpt2api:latest
 ```
 
-工作流使用 Docker Buildx 构建 `linux/amd64` 和 `linux/arm64` 两个平台。服务器执行 `docker compose pull` 后即可获取最近一次推送对应的镜像。
+工作流使用 Docker Buildx 构建 `linux/amd64` 和 `linux/arm64` 两个平台。服务器执行 `docker pull ghcr.io/mufenxu/chatgpt2api:latest` 后即可获取最近一次推送对应的镜像。
 
 ## 方式二：WARP / FlareSolverr 部署
 
@@ -134,12 +138,16 @@ cp config.example.json config.json
 cp .env.example .env
 ```
 
-`config.json` 是必需的；`.env` 可以省略，因为 Compose 为代理参数提供了默认值，但建议复制后按需修改端口、代理和 FlareSolverr 配置。
+`config.json` 和 `.env` 都是必需的；`.env` 中除了统一登录参数，也可以按需修改端口、代理和 FlareSolverr 配置。
 
-至少修改 `.env` 中的：
+至少修改 `.env` 中的统一登录参数：
 
 ```text
-CHATGPT2API_AUTH_KEY=your_secret_key_here
+MY_ISSUER=https://your-oidc-provider.example.com
+MY_CLIENT_ID=replace-with-your-client-id
+MY_CLIENT_SECRET=replace-with-your-client-secret
+MY_REDIRECT_URI=https://your-domain.com/auth/my/callback
+SESSION_SECRET=replace-with-at-least-32-random-characters
 ```
 
 启动：
@@ -151,7 +159,7 @@ docker compose -f docker-compose.warp.yml up -d --build
 访问：
 
 ```text
-http://localhost:3000
+http://localhost:6066
 ```
 
 FlareSolverr 相关配置可以在后台设置页的 `FlareSolverr` tab 中查看和测试。
