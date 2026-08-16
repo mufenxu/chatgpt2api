@@ -30,7 +30,7 @@ git --version
 
 ## 方式一：普通 Docker 部署
 
-适合不需要 WARP / FlareSolverr 清障的场景。正式部署使用 GitHub Container Registry 的预构建镜像：
+适合不需要 WARP / FlareSolverr 清障的场景。正式部署不需要克隆仓库，直接使用 GitHub Container Registry 的预构建镜像：
 
 ```text
 ghcr.io/mufenxu/chatgpt2api:latest
@@ -46,25 +46,32 @@ docker login ghcr.io -u mufenxu
 
 登录时使用具有 `read:packages` 权限的 GitHub Personal Access Token；公开 GHCR 包不需要登录。
 
-```bash
-git clone git@github.com:mufenxu/chatgpt2api.git
-cd chatgpt2api
-cp config.example.json config.json
-```
-
-修改 `config.json` 中的 `auth-key`，或在 `docker-compose.yml` 中配置：
-
-```yaml
-environment:
-  - CHATGPT2API_AUTH_KEY=your_secret_key
-```
-
-首次启动和后续更新：
+创建持久化目录和配置文件：
 
 ```bash
-docker compose pull
-docker compose up -d
+mkdir -p /opt/chatgpt2api/data
+cat > /opt/chatgpt2api/config.json <<'JSON'
+{
+  "auth-key": "replace-with-your-admin-key"
+}
+JSON
 ```
+
+首次启动：
+
+```bash
+docker pull ghcr.io/mufenxu/chatgpt2api:latest
+docker run -d \
+  --name chatgpt2api \
+  --restart unless-stopped \
+  -p 3000:80 \
+  -v /opt/chatgpt2api/data:/app/data \
+  -v /opt/chatgpt2api/config.json:/app/config.json \
+  -e STORAGE_BACKEND=json \
+  ghcr.io/mufenxu/chatgpt2api:latest
+```
+
+修改 `config.json` 中的 `auth-key` 后再启动。
 
 访问：
 
@@ -87,8 +94,18 @@ docker logs -f chatgpt2api
 停止：
 
 ```bash
-docker compose down
+docker rm -f chatgpt2api
 ```
+
+更新镜像：
+
+```bash
+docker pull ghcr.io/mufenxu/chatgpt2api:latest
+docker rm -f chatgpt2api
+# 再次执行上面的 docker run 命令
+```
+
+启用统一登录时，在 `docker run` 中追加 `--env-file /opt/chatgpt2api/.env`；普通部署不需要 `.env`。如果 GHCR 包设置为私有，先执行 `docker login ghcr.io -u mufenxu`。
 
 ### GitHub Actions 镜像构建
 

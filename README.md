@@ -31,25 +31,44 @@
 
 ## 快速开始
 
-### Docker 运行
+### Docker 运行（直接拉取镜像）
+
+正式部署不需要克隆仓库，服务器准备好 Docker 后直接拉取镜像即可。先创建持久化目录和配置文件：
 
 ```bash
-git clone git@github.com:mufenxu/chatgpt2api.git
-cd chatgpt2api
-cp config.example.json config.json
-docker compose up -d
+mkdir -p /opt/chatgpt2api/data
+cat > /opt/chatgpt2api/config.json <<'JSON'
+{
+  "auth-key": "replace-with-your-admin-key"
+}
+JSON
 ```
 
-启动前请先在 `config.json` 中把 `auth-key` 改成自己的管理员密钥，也可以在 `docker-compose.yml` 中通过 `CHATGPT2API_AUTH_KEY` 覆盖。
-
-默认镜像地址：`ghcr.io/mufenxu/chatgpt2api:latest`。每次推送代码到 GitHub 后，GitHub Actions 会自动重新构建并覆盖这个 `latest` 标签。
-
-首次启动和后续更新：
+拉取并启动：
 
 ```bash
-docker compose pull
-docker compose up -d
+docker pull ghcr.io/mufenxu/chatgpt2api:latest
+docker run -d \
+  --name chatgpt2api \
+  --restart unless-stopped \
+  -p 3000:80 \
+  -v /opt/chatgpt2api/data:/app/data \
+  -v /opt/chatgpt2api/config.json:/app/config.json \
+  -e STORAGE_BACKEND=json \
+  ghcr.io/mufenxu/chatgpt2api:latest
 ```
+
+镜像地址：`ghcr.io/mufenxu/chatgpt2api:latest`。每次推送代码到 GitHub 后，GitHub Actions 会自动重新构建并覆盖 `latest` 标签。
+
+更新镜像：
+
+```bash
+docker pull ghcr.io/mufenxu/chatgpt2api:latest
+docker rm -f chatgpt2api
+# 再次执行上面的 docker run 命令
+```
+
+启用统一登录时，在 `docker run` 中追加 `--env-file /opt/chatgpt2api/.env`。普通部署不需要 `.env`。
 
 - Web 面板：`http://localhost:3000`
 - API 地址：`http://localhost:3000/v1`
