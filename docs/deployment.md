@@ -4,11 +4,10 @@
 
 ## 部署前准备
 
-普通部署和 WARP / FlareSolverr 部署都从当前源码构建，需要安装：
+普通镜像部署需要安装 Docker Compose，WARP / FlareSolverr 和源码运行还需要 Git：
 
 - Docker
 - Docker Compose v2
-- Git
 
 首次部署前建议确认：
 
@@ -29,7 +28,7 @@ docker compose version
 
 ## 方式一：普通 Docker 部署
 
-适合不需要 WARP / FlareSolverr 清障的场景。在项目根目录准备配置文件：
+适合不需要 WARP / FlareSolverr 清障的场景。服务器无需构建源码，Compose 会自动拉取项目镜像。在项目目录准备配置文件：
 
 ```bash
 cp config.example.json config.json
@@ -39,7 +38,7 @@ cp .env.example .env
 修改 `config.json` 中的 `auth-key`，并按实际环境填写 `.env`。首次启动：
 
 ```bash
-docker compose -f docker-compose.local.yml up -d --build
+docker compose up -d
 ```
 
 访问：
@@ -57,20 +56,20 @@ http://localhost:6066/v1
 查看日志：
 
 ```bash
-docker compose -f docker-compose.local.yml logs -f app
+docker compose logs -f app
 ```
 
 停止：
 
 ```bash
-docker compose -f docker-compose.local.yml down
+docker compose down
 ```
 
-更新部署：
+更新镜像并重新部署：
 
 ```bash
-git pull
-docker compose -f docker-compose.local.yml up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 需要统一登录时，必须在 `.env` 中完整填写五个 OIDC 参数。`MY_REDIRECT_URI` 必须与登录服务中登记的回调地址完全一致。
@@ -223,18 +222,18 @@ mkdir -p backups
 tar -czf backups/chatgpt2api-$(date +%Y%m%d-%H%M%S).tgz config.json .env data
 ```
 
-拉取最新代码并重新构建：
+拉取最新镜像并重新部署：
 
 ```bash
-git pull
-docker compose -f docker-compose.local.yml up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 查看状态：
 
 ```bash
-docker compose -f docker-compose.local.yml ps
-docker compose -f docker-compose.local.yml logs -f app
+docker compose ps
+docker compose logs -f app
 ```
 
 ## 升级：WARP / FlareSolverr 部署
@@ -296,7 +295,7 @@ git checkout <旧版本commit>
 普通 Docker 部署：
 
 ```bash
-docker compose -f docker-compose.local.yml up -d --build
+docker compose up -d
 ```
 
 WARP / FlareSolverr 部署：
@@ -314,7 +313,7 @@ tar -xzf backups/你的备份文件.tgz
 恢复数据前建议先停止容器，避免运行中写入覆盖：
 
 ```bash
-docker compose -f docker-compose.local.yml down
+docker compose down
 ```
 
 或：
@@ -328,13 +327,13 @@ docker compose -f docker-compose.warp.yml down
 查看容器：
 
 ```bash
-docker compose -f docker-compose.local.yml ps
+docker compose ps
 ```
 
 查看主服务日志：
 
 ```bash
-docker compose -f docker-compose.local.yml logs -f app
+docker compose logs -f app
 ```
 
 查看 WARP 部署主服务日志：
@@ -346,7 +345,7 @@ docker logs -f chatgpt2api-warp
 重启普通部署：
 
 ```bash
-docker compose -f docker-compose.local.yml restart
+docker compose restart
 ```
 
 重启 WARP 部署：

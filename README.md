@@ -6,7 +6,7 @@
 
 ## 快速开始
 
-### Docker 运行（源码构建）
+### Docker 运行（拉取镜像）
 
 在项目根目录准备配置文件：
 
@@ -15,17 +15,17 @@ cp config.example.json config.json
 cp .env.example .env
 ```
 
-修改 `config.json` 中的 `auth-key`，并按实际环境填写 `.env`。随后构建并启动：
+修改 `config.json` 中的 `auth-key`，并按实际环境填写 `.env`。随后拉取镜像并启动：
 
 ```bash
-docker compose -f docker-compose.local.yml up -d --build
+docker compose up -d
 ```
 
 更新当前部署：
 
 ```bash
-git pull
-docker compose -f docker-compose.local.yml up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 需要统一登录时，`.env` 中的五个 OIDC 参数必须完整填写，`MY_REDIRECT_URI` 必须与登录服务中登记的回调地址完全一致。
