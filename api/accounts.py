@@ -38,6 +38,7 @@ from services.sub2api_service import (
 class UserKeyCreateRequest(BaseModel):
     name: str = ""
     quota_total: int = Field(default=0, ge=0)
+    quota_mode: Literal["fixed", "dynamic"] = "fixed"
 
 
 class UserKeyUpdateRequest(BaseModel):
@@ -45,6 +46,7 @@ class UserKeyUpdateRequest(BaseModel):
     enabled: bool | None = None
     key: str | None = None
     quota_total: int | None = Field(default=None, ge=0)
+    quota_mode: Literal["fixed", "dynamic"] | None = None
     reset_quota_used: bool | None = None
 
 
@@ -172,7 +174,12 @@ def create_router() -> APIRouter:
     async def create_user_key(body: UserKeyCreateRequest, authorization: str | None = Header(default=None)):
         require_admin(authorization)
         try:
-            item, raw_key = auth_service.create_key(role="user", name=body.name, quota_total=body.quota_total)
+            item, raw_key = auth_service.create_key(
+                role="user",
+                name=body.name,
+                quota_total=body.quota_total,
+                quota_mode=body.quota_mode,
+            )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail={"error": str(exc)}) from exc
         return {"item": item, "key": raw_key, "items": auth_service.list_keys(role="user")}
@@ -191,6 +198,7 @@ def create_router() -> APIRouter:
                 "enabled": body.enabled,
                 "key": body.key,
                 "quota_total": body.quota_total,
+                "quota_mode": body.quota_mode,
                 "reset_quota_used": body.reset_quota_used,
             }.items()
             if value is not None

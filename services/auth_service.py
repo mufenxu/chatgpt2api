@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import secrets
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timezone
 from threading import Lock
 from typing import Literal
@@ -27,8 +28,9 @@ def _hash_key(value: str) -> str:
 
 
 class AuthService:
-    def __init__(self, storage: StorageBackend):
+    def __init__(self, storage: StorageBackend, dynamic_quota_getter: Callable[[], int] | None = None):
         self.storage = storage
+        self.dynamic_quota_getter = dynamic_quota_getter
         self._lock = Lock()
         self._items = self._load()
         self._last_used_flush_at: dict[str, datetime] = {}
@@ -47,6 +49,18 @@ class AuthService:
             return max(0, int(value if value is not None else default))
         except (TypeError, ValueError):
             return max(0, default)
+
+    @staticmethod
+    def _quota_mode(value: object) -> str:
+        return "dynamic" if str(value or "").strip().lower() == "dynamic" else "fixed"
+
+    def _dynamic_quota(self) -> int:
+        if self.dynamic_quota_getter is None:
+            return 0
+        try:
+            return self._quota_value(self.dynamic_quota_getter())
+        except Exception:
+            return 0
 
     def _normalize_item(self, raw: object) -> dict[str, object] | None:
         if not isinstance(raw, dict):
@@ -72,6 +86,7 @@ class AuthService:
         }
         if role == "user":
             item.update({
+                "quota_mode": self._quota_mode(raw.get("quota_mode")),
                 "quota_total": self._quota_value(raw.get("quota_total")),
                 "quota_used": self._quota_value(raw.get("quota_used")),
                 "quota_updated_at": self._clean(raw.get("quota_updated_at")) or created_at,
@@ -93,8 +108,7 @@ class AuthService:
     def _reload_locked(self) -> None:
         self._items = self._load()
 
-    @staticmethod
-    def _public_item(item: dict[str, object]) -> dict[str, object]:
+    def _public_item(self, item: dict[str, object]) -> dict[str, object]:
         public = {
             "id": item.get("id"),
             "name": item.get("name"),
@@ -104,12 +118,14 @@ class AuthService:
             "last_used_at": item.get("last_used_at"),
         }
         if item.get("role") == "user":
-            quota_total = AuthService._quota_value(item.get("quota_total"))
-            quota_used = AuthService._quota_value(item.get("quota_used"))
+            quota_mode = self._quota_mode(item.get("quota_mode"))
+            quota_total = self._quota_value(item.get("quota_total"))
+            quota_used = self._quota_value(item.get("quota_used"))
             public.update({
+                "quota_mode": quota_mode,
                 "quota_total": quota_total,
                 "quota_used": quota_used,
-                "quota_remaining": max(0, quota_total - quota_used),
+                "quota_remaining": self._dynamic_quota() if quota_mode == "dynamic" else max(0, quota_total - quota_used),
                 "quota_updated_at": item.get("quota_updated_at"),
             })
         return public
@@ -175,7 +191,14 @@ class AuthService:
             raise ValueError("这个名称已经在使用中了，换一个更容易区分的名称吧")
         return candidate
 
-    def create_key(self, *, role: AuthRole, name: str = "", quota_total: int = 0) -> tuple[dict[str, object], str]:
+    def create_key(
+        self,
+        *,
+        role: AuthRole,
+        name: str = "",
+        quota_total: int = 0,
+        quota_mode: str = "fixed",
+    ) -> tuple[dict[str, object], str]:
         with self._lock:
             self._reload_locked()
             normalized_name = self._build_name_locked(name, role=role)
@@ -197,6 +220,7 @@ class AuthService:
             }
             if role == "user":
                 item.update({
+                    "quota_mode": self._quota_mode(quota_mode),
                     "quota_total": self._quota_value(quota_total),
                     "quota_used": 0,
                     "quota_updated_at": _now_iso(),
@@ -237,6 +261,9 @@ class AuthService:
                 if next_role == "user" and "quota_total" in updates and updates.get("quota_total") is not None:
                     next_item["quota_total"] = self._quota_value(updates.get("quota_total"))
                     next_item["quota_updated_at"] = _now_iso()
+                if next_role == "user" and "quota_mode" in updates and updates.get("quota_mode") is not None:
+                    next_item["quota_mode"] = self._quota_mode(updates.get("quota_mode"))
+                    next_item["quota_updated_at"] = _now_iso()
                 if next_role == "user" and bool(updates.get("reset_quota_used")):
                     next_item["quota_used"] = 0
                     next_item["quota_updated_at"] = _now_iso()
@@ -264,9 +291,21 @@ class AuthService:
             item = next((candidate for candidate in self._items if candidate.get("id") == identity_id), None)
             if item is None or item.get("role") != "user" or not bool(item.get("enabled", True)):
                 raise ValueError("用户不存在或已被禁用")
+            quota_mode = self._quota_mode(item.get("quota_mode"))
+            if quota_mode == "dynamic":
+                quota = self._dynamic_quota()
+                return {
+                    "unlimited": False,
+                    "quota_mode": quota_mode,
+                    "quota_total": quota,
+                    "quota_used": 0,
+                    "quota_remaining": quota,
+                    "quota_updated_at": None,
+                }
             public = self._public_item(item)
             return {
                 "unlimited": False,
+                "quota_mode": quota_mode,
                 "quota_total": public.get("quota_total"),
                 "quota_used": public.get("quota_used"),
                 "quota_remaining": public.get("quota_remaining"),
@@ -285,6 +324,19 @@ class AuthService:
                     continue
                 if not bool(item.get("enabled", True)):
                     raise QuotaExceededError("用户已被禁用")
+                quota_mode = self._quota_mode(item.get("quota_mode"))
+                if quota_mode == "dynamic":
+                    quota = self._dynamic_quota()
+                    if quota < charge:
+                        raise QuotaExceededError("后台账号剩余额度不足")
+                    return {
+                        "unlimited": False,
+                        "quota_mode": quota_mode,
+                        "quota_total": quota,
+                        "quota_used": 0,
+                        "quota_remaining": quota,
+                        "quota_updated_at": None,
+                    }
                 quota_total = self._quota_value(item.get("quota_total"))
                 quota_used = self._quota_value(item.get("quota_used"))
                 if quota_total - quota_used < charge:
@@ -314,6 +366,8 @@ class AuthService:
             for index, item in enumerate(self._items):
                 if item.get("id") != identity_id or item.get("role") != "user":
                     continue
+                if self._quota_mode(item.get("quota_mode")) == "dynamic":
+                    return
                 next_item = dict(item)
                 next_item["quota_used"] = max(0, self._quota_value(item.get("quota_used")) - refund)
                 next_item["quota_updated_at"] = _now_iso()
@@ -366,4 +420,14 @@ class AuthService:
         return None
 
 
-auth_service = AuthService(config.get_storage_backend())
+def _get_account_pool_quota() -> int:
+    from services.account_service import account_service
+
+    return sum(
+        max(0, int(item.get("quota") or 0))
+        for item in account_service.list_accounts()
+        if item.get("status") != "禁用"
+    )
+
+
+auth_service = AuthService(config.get_storage_backend(), dynamic_quota_getter=_get_account_pool_quota)

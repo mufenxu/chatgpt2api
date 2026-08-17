@@ -310,6 +310,8 @@ export type LoginResponse = {
   name: string;
 };
 
+export type UserQuotaMode = "fixed" | "dynamic";
+
 export type UserKey = {
   id: string;
   name: string;
@@ -317,6 +319,7 @@ export type UserKey = {
   enabled: boolean;
   created_at: string | null;
   last_used_at: string | null;
+  quota_mode: UserQuotaMode;
   quota_total: number;
   quota_used: number;
   quota_remaining: number;
@@ -325,6 +328,7 @@ export type UserKey = {
 
 export type UserQuota = {
   unlimited: boolean;
+  quota_mode?: UserQuotaMode;
   quota_total: number | null;
   quota_used: number;
   quota_remaining: number | null;
@@ -701,16 +705,16 @@ export async function fetchUserKeys() {
   return httpRequest<{ items: UserKey[] }>("/api/auth/users");
 }
 
-export async function createUserKey(name: string, quotaTotal: number) {
+export async function createUserKey(name: string, quotaTotal: number, quotaMode: UserQuotaMode) {
   return httpRequest<{ item: UserKey; key: string; items: UserKey[] }>("/api/auth/users", {
     method: "POST",
-    body: { name, quota_total: quotaTotal },
+    body: { name, quota_total: quotaTotal, quota_mode: quotaMode },
   });
 }
 
 export async function updateUserKey(
   keyId: string,
-  updates: { enabled?: boolean; name?: string; key?: string; quota_total?: number; reset_quota_used?: boolean },
+  updates: { enabled?: boolean; name?: string; key?: string; quota_total?: number; quota_mode?: UserQuotaMode; reset_quota_used?: boolean },
 ) {
   return httpRequest<{ item: UserKey; items: UserKey[] }>(`/api/auth/users/${keyId}`, {
     method: "POST",

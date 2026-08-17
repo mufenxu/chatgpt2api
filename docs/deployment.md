@@ -4,14 +4,17 @@
 
 ## 部署前准备
 
-直接拉取镜像部署时，服务器只需要安装 Docker：
+普通部署和 WARP / FlareSolverr 部署都从当前源码构建，需要安装：
 
 - Docker
+- Docker Compose v2
+- Git
 
-WARP / FlareSolverr 部署额外需要 Docker Compose v2；源码运行才需要 Git。首次部署前建议确认：
+首次部署前建议确认：
 
 ```bash
 docker version
+docker compose version
 ```
 
 项目核心持久化文件：
@@ -26,56 +29,18 @@ docker version
 
 ## 方式一：普通 Docker 部署
 
-适合不需要 WARP / FlareSolverr 清障的场景。正式部署不需要克隆仓库，直接使用 GitHub Container Registry 的预构建镜像：
-
-```text
-ghcr.io/mufenxu/chatgpt2api:latest
-```
-
-镜像支持 `linux/amd64` 和 `linux/arm64`。仓库每次推送代码后，GitHub Actions 会自动构建并更新 `latest` 标签。
-
-如果 GHCR 包设置为私有，首次拉取前登录：
+适合不需要 WARP / FlareSolverr 清障的场景。在项目根目录准备配置文件：
 
 ```bash
-docker login ghcr.io -u mufenxu
+cp config.example.json config.json
+cp .env.example .env
 ```
 
-登录时使用具有 `read:packages` 权限的 GitHub Personal Access Token；公开 GHCR 包不需要登录。
-
-创建持久化目录和配置文件：
+修改 `config.json` 中的 `auth-key`，并按实际环境填写 `.env`。首次启动：
 
 ```bash
-mkdir -p /opt/chatgpt2api/data
-cat > /opt/chatgpt2api/config.json <<'JSON'
-{
-  "auth-key": "replace-with-your-admin-key"
-}
-JSON
-cat > /opt/chatgpt2api/.env <<'ENV'
-MY_ISSUER=https://your-oidc-provider.example.com
-MY_CLIENT_ID=replace-with-your-client-id
-MY_CLIENT_SECRET=replace-with-your-client-secret
-MY_REDIRECT_URI=https://your-domain.com/auth/my/callback
-SESSION_SECRET=replace-with-at-least-32-random-characters
-ENV
+docker compose -f docker-compose.local.yml up -d --build
 ```
-
-首次启动：
-
-```bash
-docker pull ghcr.io/mufenxu/chatgpt2api:latest
-docker run -d \
-  --name chatgpt2api \
-  --restart unless-stopped \
-  -p 6066:80 \
-  --env-file /opt/chatgpt2api/.env \
-  -v /opt/chatgpt2api/data:/app/data \
-  -v /opt/chatgpt2api/config.json:/app/config.json \
-  -e STORAGE_BACKEND=json \
-  ghcr.io/mufenxu/chatgpt2api:latest
-```
-
-修改 `config.json` 中的 `auth-key` 后再启动。
 
 访问：
 
@@ -92,34 +57,23 @@ http://localhost:6066/v1
 查看日志：
 
 ```bash
-docker logs -f chatgpt2api
+docker compose -f docker-compose.local.yml logs -f app
 ```
 
 停止：
 
 ```bash
-docker rm -f chatgpt2api
+docker compose -f docker-compose.local.yml down
 ```
 
-更新镜像：
+更新部署：
 
 ```bash
-docker pull ghcr.io/mufenxu/chatgpt2api:latest
-docker rm -f chatgpt2api
-# 再次执行上面的 docker run 命令
+git pull
+docker compose -f docker-compose.local.yml up -d --build
 ```
 
-默认部署启用统一登录，因此必须通过 `--env-file /opt/chatgpt2api/.env` 传入五个 OIDC 参数。`MY_REDIRECT_URI` 必须与统一登录服务中登记的回调地址完全一致。如果 GHCR 包设置为私有，先执行 `docker login ghcr.io -u mufenxu`。
-
-### GitHub Actions 镜像构建
-
-镜像构建工作流位于 `.github/workflows/docker-publish.yml`，会在代码每次推送到 GitHub 时运行，也可以在 GitHub Actions 页面手动运行。所有构建结果统一推送到：
-
-```text
-ghcr.io/mufenxu/chatgpt2api:latest
-```
-
-工作流使用 Docker Buildx 构建 `linux/amd64` 和 `linux/arm64` 两个平台。服务器执行 `docker pull ghcr.io/mufenxu/chatgpt2api:latest` 后即可获取最近一次推送对应的镜像。
+需要统一登录时，必须在 `.env` 中完整填写五个 OIDC 参数。`MY_REDIRECT_URI` 必须与登录服务中登记的回调地址完全一致。
 
 ## 方式二：WARP / FlareSolverr 部署
 
@@ -190,8 +144,6 @@ docker compose -f docker-compose.warp.yml down
 后端：
 
 ```bash
-git clone git@github.com:mufenxu/chatgpt2api.git
-cd chatgpt2api
 uv sync
 uv run main.py
 ```
@@ -271,19 +223,18 @@ mkdir -p backups
 tar -czf backups/chatgpt2api-$(date +%Y%m%d-%H%M%S).tgz config.json .env data
 ```
 
-拉取最新代码和镜像：
+拉取最新代码并重新构建：
 
 ```bash
 git pull
-docker compose pull
-docker compose up -d
+docker compose -f docker-compose.local.yml up -d --build
 ```
 
 查看状态：
 
 ```bash
-docker compose ps
-docker logs -f chatgpt2api
+docker compose -f docker-compose.local.yml ps
+docker compose -f docker-compose.local.yml logs -f app
 ```
 
 ## 升级：WARP / FlareSolverr 部署
@@ -345,7 +296,7 @@ git checkout <旧版本commit>
 普通 Docker 部署：
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.local.yml up -d --build
 ```
 
 WARP / FlareSolverr 部署：
@@ -363,7 +314,7 @@ tar -xzf backups/你的备份文件.tgz
 恢复数据前建议先停止容器，避免运行中写入覆盖：
 
 ```bash
-docker compose down
+docker compose -f docker-compose.local.yml down
 ```
 
 或：
@@ -377,13 +328,13 @@ docker compose -f docker-compose.warp.yml down
 查看容器：
 
 ```bash
-docker compose ps
+docker compose -f docker-compose.local.yml ps
 ```
 
 查看主服务日志：
 
 ```bash
-docker logs -f chatgpt2api
+docker compose -f docker-compose.local.yml logs -f app
 ```
 
 查看 WARP 部署主服务日志：
@@ -395,7 +346,7 @@ docker logs -f chatgpt2api-warp
 重启普通部署：
 
 ```bash
-docker compose restart
+docker compose -f docker-compose.local.yml restart
 ```
 
 重启 WARP 部署：

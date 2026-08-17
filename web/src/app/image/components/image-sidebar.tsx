@@ -103,11 +103,11 @@ export function ImageSidebar({
                 <div
                   key={conversation.id}
                   className={cn(
-                    "group relative w-full border-l-2 text-left transition",
+                    "group relative w-full rounded-xl border text-left transition",
                     hideActionButtons ? "px-4 py-3.5" : "px-3 py-2 sm:py-3",
                     active
-                      ? "border-stone-900 bg-black/[0.035] text-stone-950"
-                      : "border-transparent text-stone-700 hover:border-stone-300 hover:bg-white/40",
+                      ? "border-stone-200 bg-white text-stone-950 shadow-sm"
+                      : "border-stone-200/70 bg-white/70 text-stone-700 hover:border-stone-300 hover:bg-white",
                   )}
                 >
                   <button

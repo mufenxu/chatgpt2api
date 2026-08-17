@@ -1,86 +1,38 @@
-<h1 align="center">ChatGPT2API</h1>
+<h1 align="center">chatgpt2api</h1>
 
+<p align="center">面向图片生成与编辑场景的自托管服务，提供 OpenAI 兼容 API、在线画图、账号池管理和 Docker 部署能力。</p>
 
-<p align="center">ChatGPT2API 主要是对 ChatGPT 官网相关能力进行逆向整理与封装，提供面向 ChatGPT 图片生成、图片编辑、多图组图编辑场景的 OpenAI 兼容图片 API / 代理，并集成在线画图、号池管理、多种账号导入方式与 Docker 自托管部署能力。</p>
-
-> [!WARNING]
-> 免责声明：
->
-> 本项目涉及对 ChatGPT 官网文本生成、图片生成与图片编辑等相关接口的逆向研究，仅供个人学习、技术研究与非商业性技术交流使用。
->
-> - 严禁将本项目用于任何商业用途、盈利性使用、批量操作、自动化滥用或规模化调用。
-> - 严禁将本项目用于破坏市场秩序、恶意竞争、套利倒卖、二次售卖相关服务，以及任何违反 OpenAI 服务条款或当地法律法规的行为。
-> - 严禁将本项目用于生成、传播或协助生成违法、暴力、色情、未成年人相关内容，或用于诈骗、欺诈、骚扰等非法或不当用途。
-> - 使用者应自行承担全部风险，包括但不限于账号被限制、临时封禁或永久封禁以及因违规使用等所导致的法律责任。
-> - 使用本项目即视为你已充分理解并同意本免责声明全部内容；如因滥用、违规或违法使用造成任何后果，均由使用者自行承担。
-> - 本项目基于对 ChatGPT 官网相关能力的逆向研究实现，存在账号受限、临时封禁或永久封禁的风险。请勿使用你自己的重要账号、常用账号或高价值账号进行测试。
-
-
-## 赞助商
-
-<table>
-  <tr>
-    <td width="190" align="center">
-      <a href="https://www.atlascloud.ai/zh?utm_source=github&utm_medium=link&utm_campaign=chatgpt2api"><img src="assets/atlascloud.svg" width="163" alt="Atlas Cloud"></a>
-    </td>
-    <td>
-      <a href="https://www.atlascloud.ai/zh?utm_source=github&utm_medium=link&utm_campaign=chatgpt2api">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities. Check out <a href="https://www.atlascloud.ai/console/coding-plan">Atlas Cloud's new coding plan promotion</a> for more budget-friendly API access.
-    </td>
-  </tr>
-</table>
+本仓库维护当前项目使用的版本。文档以仓库中的现有实现和配置为准，部署前请根据实际环境设置访问密钥、统一登录和存储方式。
 
 ## 快速开始
 
-### Docker 运行（直接拉取镜像）
+### Docker 运行（源码构建）
 
-正式部署不需要克隆仓库，服务器准备好 Docker 后直接拉取镜像即可。先创建持久化目录和配置文件：
-
-```bash
-mkdir -p /opt/chatgpt2api/data
-cat > /opt/chatgpt2api/config.json <<'JSON'
-{
-  "auth-key": "replace-with-your-admin-key"
-}
-JSON
-cat > /opt/chatgpt2api/.env <<'ENV'
-MY_ISSUER=https://your-oidc-provider.example.com
-MY_CLIENT_ID=replace-with-your-client-id
-MY_CLIENT_SECRET=replace-with-your-client-secret
-MY_REDIRECT_URI=https://your-domain.com/auth/my/callback
-SESSION_SECRET=replace-with-at-least-32-random-characters
-ENV
-```
-
-拉取并启动：
+在项目根目录准备配置文件：
 
 ```bash
-docker pull ghcr.io/mufenxu/chatgpt2api:latest
-docker run -d \
-  --name chatgpt2api \
-  --restart unless-stopped \
-  -p 6066:80 \
-  --env-file /opt/chatgpt2api/.env \
-  -v /opt/chatgpt2api/data:/app/data \
-  -v /opt/chatgpt2api/config.json:/app/config.json \
-  -e STORAGE_BACKEND=json \
-  ghcr.io/mufenxu/chatgpt2api:latest
+cp config.example.json config.json
+cp .env.example .env
 ```
 
-镜像地址：`ghcr.io/mufenxu/chatgpt2api:latest`。每次推送代码到 GitHub 后，GitHub Actions 会自动重新构建并覆盖 `latest` 标签。
-
-更新镜像：
+修改 `config.json` 中的 `auth-key`，并按实际环境填写 `.env`。随后构建并启动：
 
 ```bash
-docker pull ghcr.io/mufenxu/chatgpt2api:latest
-docker rm -f chatgpt2api
-# 再次执行上面的 docker run 命令
+docker compose -f docker-compose.local.yml up -d --build
 ```
 
-默认部署启用统一登录，因此 `.env` 中的五个 OIDC 参数必须填写。`MY_REDIRECT_URI` 必须与统一登录服务中登记的回调地址完全一致。
+更新当前部署：
+
+```bash
+git pull
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+需要统一登录时，`.env` 中的五个 OIDC 参数必须完整填写，`MY_REDIRECT_URI` 必须与登录服务中登记的回调地址完全一致。
 
 - Web 面板：`http://localhost:6066`
 - API 地址：`http://localhost:6066/v1`
-- 数据目录：`/opt/chatgpt2api/data`
+- 数据目录：`./data`
 
 ### WARP / FlareSolverr 稳定代理部署
 
@@ -108,11 +60,9 @@ WARP 部署必须准备 `config.json` 和 `.env`；除了统一登录参数，�
 
 ### 本地开发
 
-启动后端：
+在项目根目录启动后端：
 
 ```bash
-git clone git@github.com:mufenxu/chatgpt2api.git
-cd chatgpt2api
 uv sync
 uv run main.py
 ```
@@ -120,7 +70,7 @@ uv run main.py
 启动前端：
 
 ```bash
-cd chatgpt2api/web
+cd web
 bun install
 bun run dev
 ```
@@ -185,22 +135,6 @@ environment:
 ### 实验性 / 规划中
 
 - 详细状态说明见：[功能清单](./docs/feature-status.en.md)
-
-## 效果展示
-
-<table width="100%">
-  <tr>
-    <td width="50%"><img src="https://i.ibb.co/Jj8nfwwP/image.png" alt="image" border="0"></td>
-    <td width="50%"><img src="https://i.ibb.co/pqf235v/image-edit.png" alt="image edit" border="0"></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="https://i.ibb.co/tPcqtVfd/chery-studio.png" alt="chery studio" border="0"></td>
-    <td width="50%"><img src="https://i.ibb.co/PsT9YHBV/account-pool.png" alt="account pool" border="0"></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="https://i.ibb.co/rRWLG08q/new-api.png" alt="new api" border="0"></td>
-  </tr>
-</table>
 
 ## API
 
@@ -388,19 +322,3 @@ curl http://localhost:6066/v1/responses \
 <br>
 </details>
 </details>
-
-## 社区支持
-
-学 AI , 上 L 站：[LinuxDO](https://linux.do)
-
-## Contributors
-
-感谢所有为本项目做出贡献的开发者：
-
-<a href="https://github.com/mufenxu/chatgpt2api/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=mufenxu/chatgpt2api" />
-</a>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/chart?repos=mufenxu/chatgpt2api&type=date&legend=top-left)](https://www.star-history.com/?repos=mufenxu%2Fchatgpt2api&type=date&legend=top-left)
