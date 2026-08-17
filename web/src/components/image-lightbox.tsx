@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 
+import { downloadImageSource } from "@/lib/image-download";
 import { cn } from "@/lib/utils";
 
 type LightboxImage = {
@@ -184,10 +185,9 @@ export function ImageLightbox({
 
   const handleDownload = useCallback(() => {
     if (!current) return;
-    const link = document.createElement("a");
-    link.href = current.src;
-    link.download = `image-${current.id}.png`;
-    link.click();
+    void downloadImageSource(current.src, `image-${current.id}.png`).catch(() => {
+      window.open(current.src, "_blank");
+    });
   }, [current]);
 
   const toggleZoom = useCallback(() => {
