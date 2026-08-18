@@ -49,8 +49,8 @@ import {
 } from "@/store/image-conversations";
 
 const ACTIVE_CONVERSATION_STORAGE_KEY = "chatgpt2api:image_active_conversation_id";
-const IMAGE_RATIO_STORAGE_KEY = "chatgpt2api:image_last_ratio";
-const IMAGE_TIER_STORAGE_KEY = "chatgpt2api:image_last_tier";
+const IMAGE_RATIO_STORAGE_KEY = "chatgpt2api:image_last_ratio_v2";
+const IMAGE_TIER_STORAGE_KEY = "chatgpt2api:image_last_tier_v2";
 const IMAGE_QUALITY_STORAGE_KEY = "chatgpt2api:image_last_quality";
 const IMAGE_MODEL_STORAGE_KEY = "chatgpt2api:image_last_model";
 const IMAGE_COUNT_STORAGE_KEY = "chatgpt2api:image_last_count";
@@ -84,8 +84,11 @@ function clampImageCount(value: string) {
   return String(Math.min(100, Math.max(1, Math.floor(Number(value) || 1))));
 }
 function parseImageSize(size: string) {
+  if (size === "auto") {
+    return { width: "auto", height: "auto" };
+  }
   const match = size.match(/^(\d+)x(\d+)$/);
-  return match ? { width: match[1], height: match[2] } : { width: "1024", height: "1024" };
+  return match ? { width: match[1], height: match[2] } : { width: "auto", height: "auto" };
 }
 
 const activeConversationQueueIds = new Set<string>();
@@ -466,9 +469,9 @@ function ImagePageContent({ isAdmin }: { isAdmin: boolean }) {
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageCount, setImageCount] = useState("3");
   const [imageRatio, setImageRatio] = useState("auto");
-  const [imageTier, setImageTier] = useState("1k");
-  const [imageWidth, setImageWidth] = useState("1024");
-  const [imageHeight, setImageHeight] = useState("1024");
+  const [imageTier, setImageTier] = useState("auto");
+  const [imageWidth, setImageWidth] = useState("auto");
+  const [imageHeight, setImageHeight] = useState("auto");
   const [imageQuality, setImageQuality] = useState("auto");
   const [imageModel, setImageModel] = useState<ImageModel>("gpt-image-2");
   const [imageModels, setImageModels] = useState<ImageModel[]>(["gpt-image-2"]);
@@ -622,10 +625,11 @@ function ImagePageContent({ isAdmin }: { isAdmin: boolean }) {
         typeof window !== "undefined" ? window.localStorage.getItem(IMAGE_QUALITY_STORAGE_KEY) : null;
       const storedCount =
         typeof window !== "undefined" ? window.localStorage.getItem(IMAGE_COUNT_STORAGE_KEY) : null;
-      setImageRatio(storedRatio || "1:1");
-      setImageTier(storedTier || "1k");
-      setImageWidth("1024");
-      setImageHeight("1024");
+      const nextRatio = storedRatio || "auto";
+      setImageRatio(nextRatio);
+      setImageTier(storedTier || (nextRatio === "auto" ? "auto" : "1k"));
+      setImageWidth("auto");
+      setImageHeight("auto");
       setImageQuality(storedQuality || "auto");
       setImageCount(storedCount ? clampImageCount(storedCount) : "1");
 
@@ -1581,7 +1585,9 @@ function ImagePageContent({ isAdmin }: { isAdmin: boolean }) {
     const now = new Date().toISOString();
     const conversationId = targetConversation?.id ?? createId();
     const turnId = createId();
-    const imageSize = `${imageWidth || 1024}x${imageHeight || 1024}`;
+    const imageSize = imageWidth === "auto" || imageHeight === "auto"
+      ? "auto"
+      : `${imageWidth || 1024}x${imageHeight || 1024}`;
     const draftTurn: ImageTurn = {
       id: turnId,
       prompt,

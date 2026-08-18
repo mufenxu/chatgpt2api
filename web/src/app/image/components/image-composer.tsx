@@ -77,7 +77,7 @@ const aspectOptions = [
   { ratio: "9:16", tier: "2k", width: "1440", height: "2560", label: "9:16(2k)", icon: RectangleVertical },
   { ratio: "16:9", tier: "4k", width: "3840", height: "2160", label: "16:9(4k)", icon: RectangleHorizontal },
   { ratio: "9:16", tier: "4k", width: "2160", height: "3840", label: "9:16(4k)", icon: RectangleVertical },
-  { ratio: "auto", tier: "auto", width: "1024", height: "1024", label: "auto", icon: null },
+  { ratio: "auto", tier: "auto", width: "auto", height: "auto", label: "auto", icon: null },
 ];
 const countOptions = Array.from({ length: 10 }, (_, index) => String(index + 1));
 
@@ -424,9 +424,8 @@ export function ImageComposer({
                             <div className="flex items-center rounded-lg bg-stone-100 px-3 py-1.5 text-sm text-stone-700">
                               <span className="mr-2 text-stone-500">W</span>
                               <Input
-                                type="number"
+                                type="text"
                                 inputMode="numeric"
-                                min="1"
                                 value={imageWidth}
                                 onChange={(event) => onImageWidthChange(event.target.value)}
                                 className="h-7 border-0 bg-transparent px-0 text-sm font-medium text-stone-800 shadow-none focus-visible:ring-0"
@@ -436,9 +435,8 @@ export function ImageComposer({
                             <div className="flex items-center rounded-lg bg-stone-100 px-3 py-1.5 text-sm text-stone-700">
                               <span className="mr-2 text-stone-500">H</span>
                               <Input
-                                type="number"
+                                type="text"
                                 inputMode="numeric"
-                                min="1"
                                 value={imageHeight}
                                 onChange={(event) => onImageHeightChange(event.target.value)}
                                 className="h-7 border-0 bg-transparent px-0 text-sm font-medium text-stone-800 shadow-none focus-visible:ring-0"
