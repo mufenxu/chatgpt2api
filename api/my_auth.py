@@ -16,10 +16,13 @@ from services.my_oidc_service import (
 
 
 def _error_response(exc: MyOidcError) -> JSONResponse:
-    return JSONResponse(
+    response = JSONResponse(
         status_code=exc.status_code,
         content={"detail": {"error": exc.code, "message": exc.message}},
     )
+    if exc.retry_after:
+        response.headers["Retry-After"] = exc.retry_after
+    return response
 
 
 def _delete_flow_cookie(response: Response, *, secure: bool) -> None:
@@ -83,10 +86,9 @@ def create_router(service: MyOidcService = my_oidc_service) -> APIRouter:
         error = str(params.get("error") or "").strip()
         if error:
             await run_in_threadpool(service.discard_flow, flow_id)
-            description = " ".join(str(params.get("error_description") or "").split())[:200]
             response = JSONResponse(
                 status_code=400,
-                content={"detail": {"error": error[:80], "message": description or "MY 登录已取消"}},
+                content={"detail": {"error": error[:80], "message": "MY 登录未完成，请重新登录"}},
             )
             response.headers["Cache-Control"] = "no-store"
             response.headers["Referrer-Policy"] = "no-referrer"

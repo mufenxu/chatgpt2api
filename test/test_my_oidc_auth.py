@@ -7,6 +7,9 @@ import os
 import time
 import unittest
 import urllib.parse
+import urllib.error
+from io import BytesIO
+from types import SimpleNamespace
 from unittest import mock
 
 import jwt
@@ -75,6 +78,7 @@ class FakeOidcTransport:
         self.claim_overrides: dict[str, object] = {}
         self.token_signing_key: Ed25519PrivateKey | None = None
         self.token_kid: str | None = None
+        self.token_result: HttpResult | None = None
 
     def _id_token(self) -> str:
         now = int(time.time())
@@ -107,6 +111,8 @@ class FakeOidcTransport:
         if url == TOKEN_ENDPOINT:
             form = urllib.parse.parse_qs((body or b"").decode("ascii"), keep_blank_values=True)
             self.token_calls.append({"method": method, "form": form, "headers": dict(headers)})
+            if self.token_result is not None:
+                return self.token_result
             return _json_result(
                 {
                     "access_token": "access-token-value",
@@ -243,6 +249,86 @@ class MyOidcTests(unittest.TestCase):
         self.assertEqual(replay.exception.code, "state_mismatch")
         self.assertEqual(len(self.transport.token_calls), 1)
 
+    def test_default_transport_preserves_oauth_error_body_and_retry_after(self) -> None:
+        payload = b'{"error":"temporarily_unavailable"}'
+        error = urllib.error.HTTPError(
+            TOKEN_ENDPOINT,
+            429,
+            "Too Many Requests",
+            {"Content-Type": "application/json", "Retry-After": "42"},
+            BytesIO(payload),
+        )
+        with mock.patch("urllib.request.urlopen", side_effect=error):
+            result = MyOidcService._default_transport(TOKEN_ENDPOINT, "POST", b"", {})
+
+        self.assertEqual(result.body, payload)
+        self.assertEqual(getattr(result, "retry_after", ""), "42")
+
+    def test_token_rate_limit_becomes_retryable_safe_response(self) -> None:
+        _, flow_id, query = self._start()
+        self.transport.token_result = SimpleNamespace(
+            status_code=429,
+            content_type="application/json",
+            body=json.dumps(
+                {
+                    "error": "temporarily_unavailable",
+                    "error_description": "upstream detail must stay private",
+                }
+            ).encode("utf-8"),
+            retry_after="42",
+        )
+        app = FastAPI()
+        install_my_auth_middleware(app, self.service)
+        app.include_router(create_router(self.service))
+        client = TestClient(app)
+        client.cookies.set(FLOW_COOKIE, flow_id)
+
+        response = client.get(
+            "/auth/my/callback",
+            params={"code": "sensitive-one-time-code", "state": query["state"][0]},
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.headers.get("Retry-After"), "42")
+        self.assertEqual(response.json()["detail"]["error"], "temporarily_unavailable")
+        self.assertNotIn("upstream detail", response.text)
+        self.assertNotIn("sensitive-one-time-code", response.text)
+        self.assertNotIn(CLIENT_SECRET, response.text)
+
+    def test_invalid_grant_requires_a_fresh_login_without_upstream_details(self) -> None:
+        _, flow_id, query = self._start()
+        self.transport.token_result = _json_result(
+            {
+                "error": "invalid_grant",
+                "error_description": "code=sensitive-one-time-code secret=test-client-secret",
+            },
+            status_code=400,
+        )
+
+        with self.assertRaises(MyOidcError) as error:
+            self.service.finish(flow_id, query["state"][0], "sensitive-one-time-code")
+
+        self.assertEqual(error.exception.code, "invalid_grant")
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertIn("重新登录", error.exception.message)
+        self.assertNotIn("sensitive-one-time-code", error.exception.message)
+        self.assertNotIn(CLIENT_SECRET, error.exception.message)
+
+    def test_invalid_client_is_reported_as_safe_configuration_error(self) -> None:
+        _, flow_id, query = self._start()
+        self.transport.token_result = _json_result(
+            {"error": "invalid_client", "error_description": CLIENT_SECRET},
+            status_code=401,
+        )
+
+        with self.assertRaises(MyOidcError) as error:
+            self.service.finish(flow_id, query["state"][0], "sensitive-one-time-code")
+
+        self.assertEqual(error.exception.code, "invalid_client")
+        self.assertEqual(error.exception.status_code, 503)
+        self.assertIn("客户端配置", error.exception.message)
+        self.assertNotIn(CLIENT_SECRET, error.exception.message)
+
     def test_role_mapping_allows_admin_roles_and_denies_other_roles(self) -> None:
         self.assertEqual(map_my_role("operator"), "admin")
         self.assertEqual(map_my_role("super_admin"), "admin")
@@ -265,6 +351,8 @@ class MyOidcTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["detail"]["error"], "access_denied")
+        self.assertEqual(response.json()["detail"]["message"], "MY 登录未完成，请重新登录")
+        self.assertNotIn("cancelled", response.text)
         with self.assertRaises(MyOidcError):
             self.service.finish(flow_id, query["state"][0], "one-time-code")
 

@@ -28,11 +28,12 @@ ALLOWED_RETURN_PATHS = ("/accounts", "/image", "/image-manager", "/logs", "/sett
 
 
 class MyOidcError(ValueError):
-    def __init__(self, code: str, message: str, *, status_code: int = 400):
+    def __init__(self, code: str, message: str, *, status_code: int = 400, retry_after: str = ""):
         super().__init__(message)
         self.code = code
         self.message = message
         self.status_code = status_code
+        self.retry_after = retry_after
 
 
 @dataclass(frozen=True)
@@ -98,6 +99,7 @@ class HttpResult:
     status_code: int
     content_type: str
     body: bytes
+    retry_after: str = ""
 
 
 @dataclass(frozen=True)
@@ -142,6 +144,14 @@ def _controlled_return_to(value: str) -> str:
     return urllib.parse.urlunsplit(("", "", parsed.path, parsed.query, ""))
 
 
+def _safe_retry_after(value: object) -> str:
+    candidate = str(value or "").strip()
+    if not candidate.isascii() or not candidate.isdigit():
+        return ""
+    seconds = int(candidate)
+    return str(seconds) if 1 <= seconds <= 3600 else ""
+
+
 def map_my_role(role: object) -> str:
     normalized = str(role or "").strip().lower()
     if normalized in {"operator", "super_admin"}:
@@ -175,10 +185,14 @@ class MyOidcService:
                     body=payload,
                 )
         except urllib.error.HTTPError as exc:
+            payload = exc.read(MAX_JSON_BYTES + 1)
+            if len(payload) > MAX_JSON_BYTES:
+                raise MyOidcError("oidc_response_too_large", "MY OIDC 响应超过大小限制", status_code=502) from exc
             return HttpResult(
                 status_code=int(exc.code),
                 content_type=str(exc.headers.get("Content-Type") or "") if exc.headers else "",
-                body=b"",
+                body=payload,
+                retry_after=str(exc.headers.get("Retry-After") or "") if exc.headers else "",
             )
         except (OSError, urllib.error.URLError) as exc:
             raise MyOidcError("oidc_unavailable", "无法连接 MY OIDC 服务", status_code=503) from exc
@@ -191,6 +205,7 @@ class MyOidcService:
         form: dict[str, str] | None = None,
         basic_auth: tuple[str, str] | None = None,
         error_code: str,
+        handle_token_errors: bool = False,
     ) -> dict[str, object]:
         headers = {"Accept": "application/json", "User-Agent": "chatgpt2api-oidc/1.0"}
         body = None
@@ -202,6 +217,8 @@ class MyOidcService:
             headers["Authorization"] = f"Basic {credentials}"
         result = self._transport(url, method, body, headers)
         if result.status_code != 200 or "application/json" not in result.content_type.lower():
+            if handle_token_errors and result.status_code != 200:
+                self._raise_token_endpoint_error(result)
             raise MyOidcError(error_code, "MY OIDC 返回了无效的 HTTP 响应", status_code=502)
         try:
             payload = json.loads(result.body.decode("utf-8"))
@@ -210,6 +227,29 @@ class MyOidcService:
         if not isinstance(payload, dict):
             raise MyOidcError(error_code, "MY OIDC 返回的 JSON 结构无效", status_code=502)
         return payload
+
+    @staticmethod
+    def _raise_token_endpoint_error(result: HttpResult) -> None:
+        if "application/json" not in result.content_type.lower():
+            return
+        try:
+            payload = json.loads(result.body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return
+        if not isinstance(payload, dict):
+            return
+        oauth_error = str(payload.get("error") or "").strip()
+        if oauth_error == "temporarily_unavailable" and result.status_code in {429, 503}:
+            raise MyOidcError(
+                "temporarily_unavailable",
+                "MY 认证服务请求过于频繁，请稍后重新登录",
+                status_code=503,
+                retry_after=_safe_retry_after(result.retry_after),
+            )
+        if oauth_error == "invalid_grant" and result.status_code == 400:
+            raise MyOidcError("invalid_grant", "登录授权已失效，请重新登录")
+        if oauth_error == "invalid_client" and result.status_code in {400, 401}:
+            raise MyOidcError("invalid_client", "MY OIDC 客户端配置无效，请联系管理员", status_code=503)
 
     def _settings(self) -> MyOidcSettings:
         return MyOidcSettings.from_environment()
@@ -391,6 +431,7 @@ class MyOidcService:
             },
             basic_auth=(settings.client_id, settings.client_secret),
             error_code="token_exchange_failed",
+            handle_token_errors=True,
         )
         required_fields = ("access_token", "id_token", "token_type", "expires_in", "scope")
         if any(not token_payload.get(name) for name in required_fields):
