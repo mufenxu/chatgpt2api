@@ -476,6 +476,7 @@ function ImagePageContent({ isAdmin }: { isAdmin: boolean }) {
 
   const config = useSettingsStore((state) => state.config);
   const imageTimeoutRetrySecs = Number(config?.image_timeout_retry_secs || 30);
+  const isUpstream = Boolean(config?.image_upstream?.enabled);
 
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageCount, setImageCount] = useState("3");
@@ -1770,6 +1771,7 @@ function ImagePageContent({ isAdmin }: { isAdmin: boolean }) {
             imageModel={imageModel}
             imageModels={imageModels}
             availableQuota={availableQuota}
+            hideQuota={isUpstream}
             activeTaskCount={activeTaskCount}
             referenceImages={referenceImages}
             textareaRef={textareaRef}

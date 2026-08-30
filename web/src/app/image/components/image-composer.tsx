@@ -22,6 +22,7 @@ type ImageComposerProps = {
   imageModel: ImageModel;
   imageModels: ImageModel[];
   availableQuota: string;
+  hideQuota?: boolean;
   activeTaskCount: number;
   referenceImages: Array<{ name: string; dataUrl: string }>;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -93,6 +94,7 @@ export function ImageComposer({
   imageModel,
   imageModels,
   availableQuota,
+  hideQuota,
   activeTaskCount,
   referenceImages,
   textareaRef,
@@ -319,9 +321,11 @@ export function ImageComposer({
                     <ImagePlus className="size-3.5 sm:size-4" />
                     <span className="hidden sm:inline">{referenceImages.length > 0 ? "添加参考图" : "上传"}</span>
                   </Button>
-                  <div className="shrink-0 rounded-full bg-stone-100 px-2 py-1 text-[10px] font-medium text-stone-600 sm:px-3 sm:py-2 sm:text-xs">
-                    <span className="hidden sm:inline">剩余额度 </span>{availableQuota}
-                  </div>
+                  {!hideQuota && (
+                    <div className="shrink-0 rounded-full bg-stone-100 px-2 py-1 text-[10px] font-medium text-stone-600 sm:px-3 sm:py-2 sm:text-xs">
+                      <span className="hidden sm:inline">剩余额度 </span>{availableQuota}
+                    </div>
+                  )}
                   {activeTaskCount > 0 && (
                     <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700 sm:gap-1.5 sm:px-3 sm:py-2 sm:text-xs">
                       <LoaderCircle className="size-3 animate-spin" />
