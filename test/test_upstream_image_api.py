@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import base64
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from services import upstream_image_api
@@ -280,6 +283,35 @@ class UpstreamConfigTests(unittest.TestCase):
             _validate_image_upstream_settings(_settings(enabled=True, base_url="not-a-url"))
         # 未启用时不校验
         _validate_image_upstream_settings(_settings(enabled=False))
+
+    def test_update_preserves_api_key_when_submitted_empty(self) -> None:
+        from services.config import ConfigStore
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config_path = Path(tmp_dir) / "config.json"
+            config_path.write_text(
+                json.dumps({
+                    "auth-key": "test-auth",
+                    "image_upstream": {
+                        "enabled": True,
+                        "base_url": "https://up.example/v1",
+                        "api_key": "secret-1",
+                    },
+                }),
+                encoding="utf-8",
+            )
+            store = ConfigStore(config_path)
+            result = store.update({
+                "image_upstream": {
+                    "enabled": True,
+                    "base_url": "https://up.example/v1",
+                    "api_key": "",
+                },
+            })
+            public_upstream = result["image_upstream"]
+            self.assertEqual(public_upstream["has_api_key"], True)
+            self.assertEqual(public_upstream["api_key"], "")
+            self.assertEqual(store.get_image_upstream_settings()["api_key"], "secret-1")
 
 
 if __name__ == "__main__":

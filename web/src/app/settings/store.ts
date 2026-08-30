@@ -25,6 +25,7 @@ import {
   type CPARemoteFile,
   type ImageStorageMode,
   type ImageStorageSettings,
+  type ImageUpstreamSettings,
   type ProxyRuntimeClearanceMode,
   type ProxyRuntimeEgressMode,
   type ProxyRuntimeSettings,
@@ -65,6 +66,42 @@ const DEFAULT_THIRD_PARTY_APPS: ThirdPartyAppsSettings = {
     url: "https://canvas.best",
   },
 };
+
+const DEFAULT_IMAGE_UPSTREAM: ImageUpstreamSettings = {
+  enabled: false,
+  base_url: "",
+  api_key: "",
+  models: [],
+  timeout_secs: 120,
+  poll_interval_secs: 3.0,
+  task_query_path: "",
+  task_query_ids_param: "ids",
+  verify_ssl: true,
+  concurrency: 4,
+  max_retries: 2,
+};
+
+function normalizeImageUpstream(value: unknown): ImageUpstreamSettings {
+  const source = typeof value === "object" && value !== null ? value as Partial<ImageUpstreamSettings> : {};
+  return {
+    ...DEFAULT_IMAGE_UPSTREAM,
+    ...source,
+    enabled: Boolean(source.enabled),
+    base_url: String(source.base_url || ""),
+    api_key: String(source.api_key || ""),
+    has_api_key: Boolean(source.has_api_key),
+    models: Array.isArray(source.models)
+      ? source.models.map((item) => String(item || "").trim()).filter((item) => item.length > 0)
+      : [],
+    timeout_secs: Number(source.timeout_secs || DEFAULT_IMAGE_UPSTREAM.timeout_secs),
+    poll_interval_secs: Number(source.poll_interval_secs || DEFAULT_IMAGE_UPSTREAM.poll_interval_secs),
+    task_query_path: String(source.task_query_path || ""),
+    task_query_ids_param: String(source.task_query_ids_param || "ids"),
+    verify_ssl: Boolean(source.verify_ssl !== false),
+    concurrency: Number(source.concurrency || DEFAULT_IMAGE_UPSTREAM.concurrency),
+    max_retries: Number(source.max_retries ?? DEFAULT_IMAGE_UPSTREAM.max_retries),
+  };
+}
 
 function normalizeProxyRuntime(value: unknown): ProxyRuntimeSettings {
   const source = typeof value === "object" && value !== null ? value as Partial<ProxyRuntimeSettings> : {};
@@ -206,6 +243,7 @@ function normalizeConfig(config: SettingsConfig): SettingsConfig {
     },
     proxy_runtime: normalizeProxyRuntime(config.proxy_runtime),
     third_party_apps: normalizeThirdPartyApps(config.third_party_apps),
+    image_upstream: normalizeImageUpstream(config.image_upstream),
     backup: {
       ...backup,
       enabled: Boolean(backup.enabled),
@@ -313,6 +351,7 @@ type SettingsStore = {
   setSensitiveWordsText: (value: string) => void;
   setAIReviewField: (key: "enabled" | "base_url" | "api_key" | "model" | "prompt", value: string | boolean) => void;
   setImageStorageField: (key: keyof ImageStorageSettings, value: string | boolean) => void;
+  setImageUpstreamField: (key: keyof ImageUpstreamSettings, value: string | boolean | string[]) => void;
   setProxyRuntimeField: <K extends keyof ProxyRuntimeSettings>(key: K, value: ProxyRuntimeSettings[K]) => void;
   setProxyRuntimeClearanceField: <K extends keyof ProxyRuntimeSettings["clearance"]>(key: K, value: ProxyRuntimeSettings["clearance"][K]) => void;
   setProxyRuntimeStatusCodesText: (value: string) => void;
@@ -647,6 +686,23 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         config: {
           ...state.config,
           image_storage: next,
+        },
+      };
+    });
+  },
+
+  setImageUpstreamField: (key, value) => {
+    set((state) => {
+      if (!state.config) {
+        return {};
+      }
+      return {
+        config: {
+          ...state.config,
+          image_upstream: normalizeImageUpstream({
+            ...state.config.image_upstream,
+            [key]: value,
+          }),
         },
       };
     });

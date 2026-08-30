@@ -1,6 +1,6 @@
 "use client";
 
-import { Cloud, LoaderCircle, PlugZap, RefreshCw, Save } from "lucide-react";
+import { Cloud, LoaderCircle, PlugZap, RefreshCw, Save, Server } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -441,6 +441,131 @@ export function ConfigCard() {
                 />
                 <p className="text-xs text-stone-500">留空时返回本应用 /images/... 代理地址；填入后直接返回公开图片地址。</p>
               </div>
+            </div>
+          </div>
+          <div className="space-y-4 rounded-xl border border-stone-200 bg-white px-4 py-3 md:col-span-2">
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-3 text-sm text-stone-700">
+                <Checkbox
+                  checked={Boolean(config?.image_upstream?.enabled)}
+                  onCheckedChange={(checked) => setImageUpstreamField("enabled", Boolean(checked))}
+                />
+                使用通用图片上游（API）
+              </label>
+              <Server className="size-4 text-stone-400" />
+            </div>
+            <p className="text-xs leading-6 text-stone-500">
+              开启后按下方模型列表把生图请求转发到其他 OpenAI 兼容图片 API；列表留空表示所有图片模型都走通用上游。关闭时继续使用号池中的 ChatGPT 账号。配置不完整（缺地址或密钥）会自动回退账号链路，不影响生图。
+            </p>
+            <div className="rounded-lg border border-stone-100 bg-stone-50 px-3 py-2 text-xs text-stone-600">
+              当前生图上游：
+              <span className="ml-1 font-medium text-stone-900">
+                {config?.image_upstream?.enabled ? "通用 API" : "ChatGPT 账号池"}
+              </span>
+              <span className="ml-2 text-stone-400">修改后需要点保存生效。</span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm text-stone-700">上游 Base URL</label>
+                <Input
+                  value={String(config?.image_upstream?.base_url || "")}
+                  onChange={(event) => setImageUpstreamField("base_url", event.target.value)}
+                  placeholder="https://image.example.com/v1"
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-stone-700">API Key</label>
+                <Input
+                  type="password"
+                  value={String(config?.image_upstream?.api_key || "")}
+                  onChange={(event) => setImageUpstreamField("api_key", event.target.value)}
+                  placeholder={config?.image_upstream?.has_api_key ? "已配置，留空保持不变" : "sk-..."}
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm text-stone-700">路由模型</label>
+                <Input
+                  value={(config?.image_upstream?.models || []).join(", ")}
+                  onChange={(event) =>
+                    setImageUpstreamField(
+                      "models",
+                      event.target.value.split(",").map((item) => item.trim()).filter((item) => item.length > 0),
+                    )
+                  }
+                  placeholder="gpt-image-2（多个用英文逗号分隔；留空表示全部模型走通用上游）"
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-stone-700">请求超时（秒）</label>
+                <Input
+                  value={String(config?.image_upstream?.timeout_secs ?? 120)}
+                  onChange={(event) => setImageUpstreamField("timeout_secs", event.target.value)}
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-stone-700">轮询间隔（秒）</label>
+                <Input
+                  value={String(config?.image_upstream?.poll_interval_secs ?? 3)}
+                  onChange={(event) => setImageUpstreamField("poll_interval_secs", event.target.value)}
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-stone-700">并发上限</label>
+                <Input
+                  value={String(config?.image_upstream?.concurrency ?? 4)}
+                  onChange={(event) => setImageUpstreamField("concurrency", event.target.value)}
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-stone-700">失败重试次数</label>
+                <Input
+                  value={String(config?.image_upstream?.max_retries ?? 2)}
+                  onChange={(event) => setImageUpstreamField("max_retries", event.target.value)}
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-stone-700">任务查询接口（可选）</label>
+                <Input
+                  value={String(config?.image_upstream?.task_query_path || "")}
+                  onChange={(event) => setImageUpstreamField("task_query_path", event.target.value)}
+                  placeholder="/api/image-tasks"
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+                <p className="text-xs text-stone-500">上游超时返回 task_id 时用于轮询，如 /api/image-tasks。</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-stone-700">任务 ID 参数名</label>
+                <Input
+                  value={String(config?.image_upstream?.task_query_ids_param || "ids")}
+                  onChange={(event) => setImageUpstreamField("task_query_ids_param", event.target.value)}
+                  placeholder="ids"
+                  className="h-10 rounded-xl border-stone-200 bg-white"
+                  disabled={!config?.image_upstream?.enabled}
+                />
+              </div>
+              <label className="flex items-center gap-3 text-sm text-stone-700 md:col-span-2">
+                <Checkbox
+                  checked={Boolean(config?.image_upstream?.verify_ssl !== false)}
+                  onCheckedChange={(checked) => setImageUpstreamField("verify_ssl", Boolean(checked))}
+                  disabled={!config?.image_upstream?.enabled}
+                />
+                校验 SSL 证书（自签名或证书异常时可关闭）
+              </label>
             </div>
           </div>
           <div className="space-y-4 rounded-xl border border-stone-200 bg-white px-4 py-3 md:col-span-2">

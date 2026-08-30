@@ -16,6 +16,21 @@ export type ImageStorageSettings = {
   public_base_url: string;
 };
 
+export type ImageUpstreamSettings = {
+  enabled: boolean;
+  base_url: string;
+  api_key: string;
+  has_api_key?: boolean;
+  models: string[];
+  timeout_secs: number | string;
+  poll_interval_secs: number | string;
+  task_query_path: string;
+  task_query_ids_param: string;
+  verify_ssl: boolean;
+  concurrency: number | string;
+  max_retries: number | string;
+};
+
 export type Account = {
   access_token: string;
   type: AccountType;
@@ -181,6 +196,7 @@ export type SettingsConfig = {
   auto_relogin_after_refresh?: boolean;
   log_levels?: string[];
   image_storage?: ImageStorageSettings;
+  image_upstream?: ImageUpstreamSettings;
   proxy_runtime?: ProxyRuntimeSettings;
   third_party_apps?: ThirdPartyAppsSettings;
   backup?: BackupSettings;
