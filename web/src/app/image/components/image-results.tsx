@@ -458,6 +458,8 @@ const PROGRESS_LABELS: Record<string, string> = {
   starting_generation: "启动生成",
   generating: "生成中",
   receiving_image: "接收图片中",
+  calling_upstream: "调用通用上游",
+  waiting_upstream_task: "等待上游出图",
 };
 
 function getProgressLabel(progress?: string) {

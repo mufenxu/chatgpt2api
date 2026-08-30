@@ -119,6 +119,39 @@ environment:
 - 图片生成进度追踪，超时后可继续等待
 - 图片懒加载与滚动位置记忆，优化大量图片场景性能
 
+### 通用图片上游（可选）
+
+默认生图链路使用号池中的 ChatGPT 账号作为上游。也可以把其他
+OpenAI 兼容图片 API（如第三方中转站）作为通用上游，随时切换、不影响账号链路：
+
+在 `config.json` 或 `POST /api/settings` 中配置 `image_upstream`：
+
+```json
+{
+  "image_upstream": {
+    "enabled": true,
+    "base_url": "https://image.example.com/v1",
+    "api_key": "your-upstream-api-key",
+    "models": ["gpt-image-2"],
+    "timeout_secs": 120,
+    "poll_interval_secs": 3.0,
+    "task_query_path": "/api/image-tasks",
+    "task_query_ids_param": "ids",
+    "verify_ssl": true,
+    "concurrency": 4,
+    "max_retries": 2
+  }
+}
+```
+
+- `enabled`：总开关，关闭后所有图片请求仍走 ChatGPT 账号链路；开启后按 `models` 路由。
+- `models`：路由到通用上游的模型名列表；留空表示开启后所有图片模型都走通用上游。
+- `base_url` / `api_key`：第三方 OpenAI 兼容图片 API 的地址与密钥（`api_key` 在设置接口中脱敏返回）。
+  配置不完整（缺少 `base_url` 或 `api_key`）时自动回退到账号链路，不会影响生图。
+- `task_query_path`：可选。若上游在超时（如 504）时返回 `task_id`，会通过
+  `GET {base_url}{task_query_path}?{task_query_ids_param}={task_id}` 轮询任务结果。
+- `timeout_secs` / `poll_interval_secs` / `concurrency` / `max_retries`：请求超时、轮询间隔、并发上限与重试次数。
+
 ### 号池管理功能
 
 - 自动刷新账号邮箱、类型、额度和恢复时间（异步进度追踪）

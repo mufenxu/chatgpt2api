@@ -82,6 +82,20 @@ DEFAULT_THIRD_PARTY_APPS = {
     },
 }
 
+DEFAULT_IMAGE_UPSTREAM = {
+    "enabled": False,
+    "base_url": "",
+    "api_key": "",
+    "models": [],
+    "timeout_secs": 120,
+    "poll_interval_secs": 3.0,
+    "task_query_path": "",
+    "task_query_ids_param": "ids",
+    "verify_ssl": True,
+    "concurrency": 4,
+    "max_retries": 2,
+}
+
 
 def _normalize_bool(value: object, default: bool = False) -> bool:
     if isinstance(value, str):
@@ -294,6 +308,56 @@ def _validate_image_storage_settings(settings: dict[str, object]) -> None:
         raise ValueError("启用 WebDAV 图片存储后必须填写 WebDAV URL")
     if not str(settings.get("webdav_password") or "").strip():
         raise ValueError("启用 WebDAV 图片存储后必须填写 WebDAV 密码")
+
+
+def _normalize_image_upstream_settings(value: object) -> dict[str, object]:
+    source = value if isinstance(value, dict) else {}
+    models: list[str] = []
+    for item in source.get("models") or []:
+        model = str(item or "").strip()
+        if model and model not in models:
+            models.append(model)
+    try:
+        poll_interval_secs = float(source.get("poll_interval_secs") or DEFAULT_IMAGE_UPSTREAM["poll_interval_secs"])
+        if poll_interval_secs < 0.5:
+            poll_interval_secs = 0.5
+    except (TypeError, ValueError):
+        poll_interval_secs = DEFAULT_IMAGE_UPSTREAM["poll_interval_secs"]
+    task_query_path = str(source.get("task_query_path") or "").strip()
+    if task_query_path and not task_query_path.startswith("/"):
+        task_query_path = "/" + task_query_path
+    return {
+        "enabled": _normalize_bool(source.get("enabled"), DEFAULT_IMAGE_UPSTREAM["enabled"]),
+        "base_url": str(source.get("base_url") or "").strip().rstrip("/"),
+        "api_key": str(source.get("api_key") or source.get("_existing_api_key") or "").strip(),
+        "models": models,
+        "timeout_secs": _normalize_positive_int(
+            source.get("timeout_secs"), int(DEFAULT_IMAGE_UPSTREAM["timeout_secs"]), 1
+        ),
+        "poll_interval_secs": poll_interval_secs,
+        "task_query_path": task_query_path,
+        "task_query_ids_param": str(source.get("task_query_ids_param") or "ids").strip() or "ids",
+        "verify_ssl": _normalize_bool(source.get("verify_ssl"), bool(DEFAULT_IMAGE_UPSTREAM["verify_ssl"])),
+        "concurrency": _normalize_positive_int(
+            source.get("concurrency"), int(DEFAULT_IMAGE_UPSTREAM["concurrency"]), 1
+        ),
+        "max_retries": _normalize_positive_int(
+            source.get("max_retries"), int(DEFAULT_IMAGE_UPSTREAM["max_retries"]), 0
+        ),
+    }
+
+
+def _validate_image_upstream_settings(settings: dict[str, object]) -> None:
+    if not _normalize_bool(settings.get("enabled"), False):
+        return
+    base_url = str(settings.get("base_url") or "").strip()
+    api_key = str(settings.get("api_key") or "").strip()
+    if not base_url:
+        raise ValueError("image_upstream.enabled 为 true 时必须配置 image_upstream.base_url")
+    if not api_key:
+        raise ValueError("image_upstream.enabled 为 true 时必须配置 image_upstream.api_key")
+    if not base_url.startswith(("http://", "https://")):
+        raise ValueError("image_upstream.base_url 必须以 http:// 或 https:// 开头")
 
 
 @dataclass(frozen=True)
@@ -585,6 +649,7 @@ class ConfigStore:
         data["chat_completion_cache"] = self.get_chat_completion_cache_settings()
         data["proxy_runtime"] = self.get_public_proxy_runtime_settings()
         data["third_party_apps"] = self.get_third_party_apps_settings()
+        data["image_upstream"] = self.get_public_image_upstream_settings()
         data.pop("auth-key", None)
         return data
 
@@ -623,6 +688,14 @@ class ConfigStore:
             )
         if "third_party_apps" in next_data:
             next_data["third_party_apps"] = _normalize_third_party_apps_settings(next_data.get("third_party_apps"))
+        if "image_upstream" in next_data:
+            incoming_upstream = next_data.get("image_upstream")
+            if isinstance(incoming_upstream, dict) and not str(incoming_upstream.get("api_key") or "").strip():
+                previous_upstream = self.get_image_upstream_settings()
+                if previous_upstream.get("api_key"):
+                    incoming_upstream = {**incoming_upstream, "_existing_api_key": previous_upstream.get("api_key")}
+            next_data["image_upstream"] = _normalize_image_upstream_settings(incoming_upstream)
+            _validate_image_upstream_settings(next_data["image_upstream"])
         if "proxy_runtime" in next_data:
             incoming_runtime = next_data.get("proxy_runtime")
             if isinstance(incoming_runtime, dict):
@@ -645,6 +718,16 @@ class ConfigStore:
 
     def get_chat_completion_cache_settings(self) -> dict[str, object]:
         return _normalize_chat_completion_cache_settings(self.data.get("chat_completion_cache"))
+
+    def get_image_upstream_settings(self) -> dict[str, object]:
+        return _normalize_image_upstream_settings(self.data.get("image_upstream"))
+
+    def get_public_image_upstream_settings(self) -> dict[str, object]:
+        settings = self.get_image_upstream_settings()
+        api_key = str(settings.get("api_key") or "").strip()
+        settings["api_key"] = ""
+        settings["has_api_key"] = bool(api_key)
+        return settings
 
     def get_storage_backend(self) -> StorageBackend:
         """获取存储后端实例（单例）"""

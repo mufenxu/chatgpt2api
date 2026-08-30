@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from services.account_service import account_service
+from services.config import config
 from services.model_service import model_catalog_service
 from utils.helper import CODEX_IMAGE_MODEL
 
@@ -39,13 +40,22 @@ def list_models() -> dict[str, Any]:
     if "Pro" in codex_types:
         dynamic_models.add(f"pro-{CODEX_IMAGE_MODEL}")
 
+    upstream_models: set[str] = set()
+    upstream_settings = config.get_image_upstream_settings()
+    if upstream_settings.get("enabled"):
+        for model in upstream_settings.get("models") or []:
+            model = str(model or "").strip()
+            if model:
+                upstream_models.add(model)
+                dynamic_models.add(model)
+
     for model in sorted(dynamic_models):
         if model not in seen:
             data.append({
                 "id": model,
                 "object": "model",
                 "created": 0,
-                "owned_by": "chatgpt2api",
+                "owned_by": "upstream" if model in upstream_models else "chatgpt2api",
                 "permission": [],
                 "root": model,
                 "parent": None,

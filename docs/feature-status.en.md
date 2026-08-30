@@ -12,6 +12,7 @@
 | 同时生成多张图片 | ✅  | 已支持，后端与前端都可进行多图生成。 |
 | 图片并行生成 | ✅  | 多张图片使用独立线程和账号同时生成，可通过 `image_parallel_generation` 配置关闭。 |
 | 图片生成进度追踪 | ✅  | 任务显示当前步骤（上传/预热/获取token/生成中等），支持耗时统计。 |
+| 通用图片上游（第三方 OpenAI 兼容 API） | ✅  | 已支持通过 `image_upstream` 配置把 `gpt-image-2` 等模型路由到其他 OpenAI 兼容图片 API，可随时切换回 ChatGPT 账号链路；支持 504 + task_id 异步任务轮询。 |
 | 图片超时续轮询 | ✅  | 超时任务可继续等待，前端显示"继续等待"按钮，后端 resume-poll API。 |
 | 图片二次确认与先check再hit | ✅  | 可通过 `image_settle_enabled` 和 `image_check_before_hit_enabled` 配置，关闭后跳过等待直接返回。 |
 | 前端图片工作台 | ✅  | 已支持图片生成、图片编辑、模型选择、历史记录与查看大图。 |

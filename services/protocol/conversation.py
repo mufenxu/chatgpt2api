@@ -15,6 +15,7 @@ from services.account_service import account_service
 from services.config import config
 from services.image_storage_service import image_storage_service
 from services.openai_backend_api import ImageContentPolicyError, ImagePollTimeoutError, OpenAIBackendAPI
+from services.upstream_image_api import should_use_generic_upstream, stream_generic_upstream_outputs
 from utils.helper import (
     IMAGE_MODELS,
     extract_image_from_message_content,
@@ -1297,6 +1298,10 @@ def _generate_single_image(
     该函数在独立线程中运行，每个线程使用不同的账号，
     实现并行生图，避免串行超时阻塞。
     """
+    # 通用 OpenAI 兼容图片上游：启用时按配置路由，跳过 ChatGPT 账号链路
+    if should_use_generic_upstream(request.model):
+        return stream_generic_upstream_outputs(request, index, total)
+
     # 模型返回文本而非图片的最大重试次数
     MAX_TEXT_REPLY_RETRIES = 3
     # TLS 连接错误最大重试次数
@@ -1528,7 +1533,7 @@ def _generate_single_image(
 
 def stream_image_outputs_with_pool(request: ConversationRequest) -> Iterator[ImageOutput]:
     """并行生成多张图片，每张图片使用独立线程和账号，互不阻塞。"""
-    if not is_supported_image_model(request.model):
+    if not is_supported_image_model(request.model) and not should_use_generic_upstream(request.model):
         raise ImageGenerationError("unsupported image model,supported models: " + ", ".join(sorted(IMAGE_MODELS)))
 
     if request.n <= 1:
