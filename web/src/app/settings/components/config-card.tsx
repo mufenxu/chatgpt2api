@@ -43,6 +43,7 @@ export function ConfigCard() {
   const setSensitiveWordsText = useSettingsStore((state) => state.setSensitiveWordsText);
   const setAIReviewField = useSettingsStore((state) => state.setAIReviewField);
   const setImageStorageField = useSettingsStore((state) => state.setImageStorageField);
+  const setImageUpstreamField = useSettingsStore((state) => state.setImageUpstreamField);
   const testImageStorage = useSettingsStore((state) => state.testImageStorage);
   const syncImagesToWebDAV = useSettingsStore((state) => state.syncImagesToWebDAV);
   const isTestingImageStorage = useSettingsStore((state) => state.isTestingImageStorage);
