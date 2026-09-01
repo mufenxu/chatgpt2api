@@ -199,7 +199,7 @@ def _request_body(request: Any) -> dict[str, Any]:
         "model": request.model,
         "prompt": request.prompt,
         "n": 1,
-        "response_format": request.response_format,
+        "response_format": "url",
     }
     if request.size:
         body["size"] = request.size

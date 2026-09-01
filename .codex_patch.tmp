@@ -1,0 +1,21 @@
+*** Begin Patch
+*** Update File: services/upstream_image_api.py
+@@ def _request_body(request: Any) -> dict[str, Any]:
+     body: dict[str, Any] = {
+         "model": request.model,
+         "prompt": request.prompt,
+         "n": 1,
+-        "response_format": request.response_format,
++        "response_format": "url",
+     }
+*** Update File: test/test_upstream_image_api.py
+@@         self.assertEqual(kwargs["json"]["prompt"], "hello")
+         self.assertEqual(kwargs["json"]["n"], 1)
++        self.assertEqual(kwargs["json"]["response_format"], "url")
+         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-key")
+@@         self.assertEqual(url, "https://up.example/v1/images/edits")
+         self.assertEqual(len(outputs), 1)
+         self.assertEqual(outputs[0].kind, "result")
++        self.assertEqual(kwargs["data"]["response_format"], "url")
+         files = kwargs["files"]
+*** End Patch

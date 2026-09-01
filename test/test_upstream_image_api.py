@@ -133,6 +133,7 @@ class UpstreamGenerationTests(unittest.TestCase):
         self.assertEqual(url, "https://up.example/v1/images/generations")
         self.assertEqual(kwargs["json"]["prompt"], "hello")
         self.assertEqual(kwargs["json"]["n"], 1)
+        self.assertEqual(kwargs["json"]["response_format"], "url")
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-key")
         self.assertEqual(len(outputs), 1)
         self.assertEqual(outputs[0].kind, "result")
@@ -170,6 +171,7 @@ class UpstreamGenerationTests(unittest.TestCase):
         self.assertEqual(url, "https://up.example/v1/images/edits")
         self.assertEqual(len(outputs), 1)
         self.assertEqual(outputs[0].kind, "result")
+        self.assertEqual(kwargs["data"]["response_format"], "url")
         files = kwargs["files"]
         self.assertEqual(files[0][0], "image")
         self.assertEqual(files[0][1][0], "image_1.png")
