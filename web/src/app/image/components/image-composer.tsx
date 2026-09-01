@@ -361,7 +361,7 @@ export function ImageComposer({
                         }}
                       >
                         <h3 className="mb-3 text-base font-semibold text-stone-950">图像设置</h3>
-                        {isAdmin ? <div className="mb-3">
+                        {isAdmin || imageModels.length > 1 ? <div className="mb-3">
                           <div className="mb-2 text-sm font-medium text-stone-900">模型</div>
                           <Select
                             value={imageModel}

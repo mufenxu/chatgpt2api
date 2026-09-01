@@ -715,11 +715,6 @@ function ImagePageContent({ isAdmin }: { isAdmin: boolean }) {
     let cancelled = false;
 
     const loadImageModels = async () => {
-      if (!isAdmin) {
-        setImageModels(["gpt-image-2"]);
-        setImageModel("gpt-image-2");
-        return;
-      }
       try {
         const data = await fetchModels();
         const available = filterImageModels(Array.isArray(data.data) ? data.data : []);

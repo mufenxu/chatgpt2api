@@ -35,6 +35,9 @@ class AuthService:
         self._items = self._load()
         self._last_used_flush_at: dict[str, datetime] = {}
 
+    def _image_upstream_enabled(self) -> bool:
+        return bool(config.get_image_upstream_settings().get("enabled"))
+
     @staticmethod
     def _clean(value: object) -> str:
         return str(value or "").strip()
@@ -291,6 +294,8 @@ class AuthService:
             item = next((candidate for candidate in self._items if candidate.get("id") == identity_id), None)
             if item is None or item.get("role") != "user" or not bool(item.get("enabled", True)):
                 raise ValueError("用户不存在或已被禁用")
+            if self._image_upstream_enabled():
+                return self._unlimited_quota()
             quota_mode = self._quota_mode(item.get("quota_mode"))
             if quota_mode == "dynamic":
                 quota = self._dynamic_quota()
@@ -324,6 +329,8 @@ class AuthService:
                     continue
                 if not bool(item.get("enabled", True)):
                     raise QuotaExceededError("用户已被禁用")
+                if self._image_upstream_enabled():
+                    return self._unlimited_quota()
                 quota_mode = self._quota_mode(item.get("quota_mode"))
                 if quota_mode == "dynamic":
                     quota = self._dynamic_quota()
@@ -358,6 +365,8 @@ class AuthService:
 
     def refund_quota(self, identity: dict[str, object], amount: int = 1) -> None:
         if identity.get("role") == "admin":
+            return
+        if self._image_upstream_enabled():
             return
         refund = max(1, int(amount))
         identity_id = self._clean(identity.get("id"))
